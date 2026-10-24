@@ -222,7 +222,7 @@ select.cat-fila { padding: 3px 6px; font-size: 13px; max-width: 150px; }
    Todo lo que mueve plata o stock lo hace la base (todo o nada).
    Por ahora sin pantalla de login: se elige "con qué usuario entrar" arriba a la derecha.
    ===================================================================== */
-const VERSION = 'v9';
+const VERSION = 'v10';
 const NUBE = { url: 'https://oishkxlodwxfaskodafo.supabase.co', key: 'sb_publishable_apIt6AE-7gax1X6QWjdVZQ_QtAIoOhM' };
 const MEDIOS = ['Efectivo', 'Débito', 'Crédito', 'Transferencia', 'Mercado Pago'];
 // Mercado Pago se cobra con una de estas opciones (008): se guarda como "Mercado Pago QR", etc.
@@ -248,8 +248,9 @@ function elegirCategoria(sel) {
 const MARCAS = ['Samsung', 'iPhone', 'Motorola', 'Xiaomi', 'Otra', 'Universal'];
 const MARCAS_PRINCIPALES = ['Samsung', 'iPhone', 'Motorola'];
 const NOMBRE_ROL = { vendedor: 'Vendedor', encargado: 'Encargado', supervisor: 'Supervisor', dueno: 'Dueño', superadmin: 'Superadministrador' };
-// Supervisor = encargado en todos los locales. Dueño y superadmin = todo, y son los únicos que manejan usuarios y permisos.
-const NIVEL = { vendedor: 1, encargado: 2, supervisor: 3, dueno: 4, superadmin: 4 };
+// Escalera: superadmin (5) > dueño (4) > supervisor (3, encargado en todos los locales) > encargado (2) > vendedor (1).
+// Dueño y superadmin manejan usuarios y permisos; al dueño y a los superadmin sólo los maneja un superadmin.
+const NIVEL = { vendedor: 1, encargado: 2, supervisor: 3, dueno: 4, superadmin: 5 };
 const CLASES = { original: 'Original', generico: 'Genérico' };
 // Tilde azul delante de los productos originales
 const tilde = clase => clase === 'original' ? '<span class="tilde" title="Original" aria-label="Original">✓</span>' : '';
@@ -1488,7 +1489,8 @@ async function vConfig() {
     <p class="suave"><b>Vendedor</b>: vende, abre y cierra la caja del local donde está trabajando y ve sus ventas.
       <b>Encargado</b>: además anula ventas, hace cambios y devoluciones y ve productos y reportes de su local.
       <b>Supervisor</b>: lo mismo que el encargado, en todos los locales.
-      <b>Dueño</b> y <b>Superadministrador</b>: todo; son los únicos que crean usuarios, definen roles y permisos, y cambian productos y precios.</p>
+      <b>Dueño</b>: todo; crea usuarios, define roles, permisos y claves, y cambia productos y precios.
+      <b>Superadministrador</b>: un escalón arriba del dueño; además es el único que maneja al dueño y a otros superadministradores.</p>
     <p class="suave"><b>Rotación:</b> marcá en "Otros locales" dónde más puede trabajar cada uno. Al entrar, elige el local arriba a la derecha.</p>
     <p class="suave"><b>Claves:</b> cada uno entra con su usuario y su clave (el vendedor, con un PIN de 4 a 6 números; el resto, 8 o más caracteres).
       Las claves las ponen sólo el dueño y los superadministradores; al dueño y a los superadministradores, sólo un superadministrador.
