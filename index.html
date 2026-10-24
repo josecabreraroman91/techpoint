@@ -222,7 +222,7 @@ select.cat-fila { padding: 3px 6px; font-size: 13px; max-width: 150px; }
    Todo lo que mueve plata o stock lo hace la base (todo o nada).
    Por ahora sin pantalla de login: se elige "con qué usuario entrar" arriba a la derecha.
    ===================================================================== */
-const VERSION = 'v8';
+const VERSION = 'v9';
 const NUBE = { url: 'https://oishkxlodwxfaskodafo.supabase.co', key: 'sb_publishable_apIt6AE-7gax1X6QWjdVZQ_QtAIoOhM' };
 const MEDIOS = ['Efectivo', 'Débito', 'Crédito', 'Transferencia', 'Mercado Pago'];
 // Mercado Pago se cobra con una de estas opciones (008): se guarda como "Mercado Pago QR", etc.
@@ -274,11 +274,19 @@ const leer = (k, def) => { try { const v = localStorage.getItem('tp-' + k); retu
 
 async function rpc(nombre, args) {
   const { data, error } = await sb.rpc(nombre, args || {});
-  if (error) throw new Error(navigator.onLine ? (error.message || 'No se pudo guardar.') : 'Sin conexión: revisá internet e intentá de nuevo.');
+  if (error) {
+    const m = error.message || '';
+    if (m.startsWith('SESION:')) {                       // la base no reconoce la sesión: volver a la pantalla de entrada
+      ST.ini = { ...ST.ini, yo: null }; ST.uid = null;
+      setTimeout(render, 0);
+      throw new Error(m.slice(7).trim());
+    }
+    throw new Error(navigator.onLine ? (m || 'No se pudo guardar.') : 'Sin conexión: revisá internet e intentá de nuevo.');
+  }
   return data;
 }
 
-function usuario() { return ST.ini.usuarios.find(u => u.id === ST.uid) || null; }
+function usuario() { return ST.ini && ST.ini.yo ? (ST.ini.usuarios || []).find(u => u.id === ST.uid) || null : null; }
 function es(rol) { const u = usuario(); return !!u && NIVEL[u.rol] >= NIVEL[rol]; }
 const global = (u = usuario()) => !!u && NIVEL[u.rol] >= 3;          // trabaja en todos los locales
 const localesDe = u => u ? (global(u) ? ST.ini.sucursales.map(s => s.id) : (u.locales || [u.sucursal_id]).filter(Boolean)) : [];
@@ -356,17 +364,81 @@ async function iniciar() {
   }
 }
 
+// La base dice quién está del otro lado (sesión con usuario y clave, 010). Sin sesión: pantalla de entrada.
 async function cargarInicial() {
   ST.ini = await rpc('tp_inicial');
-  const ids = ST.ini.usuarios.map(u => u.id);
-  ST.uid = leer('uid', null);
-  if (!ids.includes(ST.uid)) ST.uid = (ST.ini.usuarios.find(u => u.rol === 'dueno') || ST.ini.usuarios[0] || {}).id ?? null;
+  ST.uid = ST.ini.yo ? ST.ini.yo.id : null;
+  ST.ping = Date.now();
   ST.suc = leer('suc', null);
-  if (ST.suc != null && !ST.ini.sucursales.some(s => s.id === ST.suc)) ST.suc = null;
+  if (ST.suc != null && !(ST.ini.sucursales || []).some(s => s.id === ST.suc)) ST.suc = null;
 }
 
-function cambiarUsuario(id) { ST.uid = +id; guardar('uid', ST.uid); ir('#inicio'); }
 function cambiarSucursal(id) { ST.suc = id ? +id : null; guardar('suc', ST.suc); render(); }
+
+// ---------------------------------------------------------------- entrar, salir y claves
+function vEntrar() {
+  const primera = ST.ini.primera_vez;
+  return `<form class="acceso panel" onsubmit="event.preventDefault();entrar(this)">
+      <div class="marca-acceso"><i class="guion"></i>techpoint<i class="punto"></i><span>sistema de ventas</span></div>
+      <label>Usuario<input name="login" autocomplete="username" autocapitalize="none" required autofocus></label>
+      <label>Clave o PIN<input name="clave" type="password" autocomplete="current-password" required></label>
+      <button>Entrar</button>
+      <p id="estado-entrar" class="mal" style="margin:0"></p>
+      ${primera ? `<details><summary class="suave">Primera vez: superadministrador sin clave</summary>
+        <p class="suave" style="font-size:13px">Sólo sirve una vez: el primer superadministrador pone su clave. Después las claves las pone él desde Config.</p>
+        <button type="button" class="sec" onclick="primeraClave()">Poner mi primera clave</button></details>` : ''}
+    </form>`;
+}
+async function entrar(f) {
+  const b = f.querySelector('button'); b.disabled = true;
+  try {
+    const r = await rpc('tp_entrar', { p_login: f.login.value, p_clave: f.clave.value });
+    if (!r.ok) { $('estado-entrar').textContent = r.error; f.clave.value = ''; f.clave.focus(); return; }
+    await cargarInicial(); ir(ST.ini.yo && ST.ini.yo.debe_cambiar ? '#clave' : '#inicio');
+  } catch (e) { $('estado-entrar').textContent = e.message; }
+  finally { b.disabled = false; }
+}
+async function primeraClave() {
+  const f = document.querySelector('form.acceso');
+  const login = f.login.value.trim(), clave = f.clave.value;
+  if (!login || !clave) { $('estado-entrar').textContent = 'Escribí arriba tu usuario y la clave que querés usar (8 o más caracteres).'; return; }
+  if (prompt('Para confirmar, escribí de nuevo la clave:') !== clave) { $('estado-entrar').textContent = 'Las claves no coinciden.'; return; }
+  try { await rpc('tp_primera_clave', { p_login: login, p_clave: clave }); await entrar(f); }
+  catch (e) { $('estado-entrar').textContent = e.message; }
+}
+async function salir() {
+  try { await rpc('tp_salir'); } catch (e) {}
+  await cargarInicial(); ir('#inicio');
+}
+function vMiClave() {
+  const u = usuario(), pin = u.rol === 'vendedor';
+  return `<h1>${ST.ini.yo.debe_cambiar ? 'Poné tu propia clave' : 'Cambiar mi clave'}</h1>
+    ${ST.ini.yo.debe_cambiar ? `<div class="aviso">Entraste con una clave que te dieron. Antes de seguir, poné una propia.</div>` : ''}
+    <form class="panel" style="max-width:420px" onsubmit="event.preventDefault();cambiarMiClave(this)">
+      <div class="fila" style="flex-direction:column;align-items:stretch">
+        <label>${pin ? 'PIN' : 'Clave'} actual<input name="actual" type="password" autocomplete="current-password" required></label>
+        <label>${pin ? 'PIN nuevo (4 a 6 números)' : 'Clave nueva (8 o más caracteres)'}<input name="nueva" type="password" autocomplete="new-password" ${pin ? 'inputmode="numeric"' : ''} required></label>
+        <label>Repetila<input name="repetida" type="password" autocomplete="new-password" required></label>
+      </div>
+      <p><button>Guardar</button></p>
+    </form>`;
+}
+async function cambiarMiClave(f) {
+  if (f.nueva.value !== f.repetida.value) return alert('Las dos claves nuevas no coinciden.');
+  try {
+    await rpc('tp_mi_clave', { ...U(), p_actual: f.actual.value, p_nueva: f.nueva.value });
+    await cargarInicial(); avisar('Listo: tu clave quedó cambiada.'); ir('#inicio');
+  } catch (e) { avisar(e.message, true); render(); }
+}
+// Poner la clave de otro (dueño y superadmin; al dueño y a los superadmin, sólo un superadmin)
+async function claveDe(id, nombre, rol) {
+  const pin = rol === 'vendedor';
+  const c = prompt(`${pin ? 'PIN nuevo (4 a 6 números)' : 'Clave nueva (8 o más caracteres)'} para ${nombre}.\nAl entrar le va a pedir que ponga una propia.`);
+  if (!c) return;
+  try { await rpc('tp_usuario_clave', { ...U(), p_id: id, p_clave: c }); avisar(`Listo: ${nombre} ya tiene clave nueva. Sus sesiones abiertas se cerraron.`); }
+  catch (e) { avisar(e.message, true); }
+  render();
+}
 
 // ---------------------------------------------------------------- encabezado y ruteo
 // Sin Stock ni Reponer: el sistema está dedicado a vender (pedido del dueño, 24/10/2026).
@@ -376,6 +448,7 @@ const RUTAS = {
   clientes: { t: 'Clientes', f: vClientes }, cliente: { t: 'Cliente', f: vCliente },
   productos: { t: 'Productos', f: vProductos, rol: 'encargado' }, producto: { t: 'Producto', f: vProducto, rol: 'encargado' },
   reportes: { t: 'Reportes', f: vReportes, rol: 'encargado' }, config: { t: 'Configuración', f: vConfig, rol: 'dueno' },
+  historial: { t: 'Historial', f: vHistorial, rol: 'dueno' }, clave: { t: 'Mi clave', f: vMiClave },
 };
 
 function pintarBarra(ruta) {
@@ -389,7 +462,7 @@ function pintarBarra(ruta) {
     <nav>
       ${link('vender', 'Vender')}${link('caja', 'Caja')}${link('ventas', 'Ventas', ['ticket', 'devolucion'])}${link('clientes', 'Clientes', ['cliente'])}
       ${es('encargado') ? link('productos', 'Productos', ['producto']) + link('reportes', 'Reportes') : ''}
-      ${es('dueno') ? link('config', 'Config') : ''}
+      ${es('dueno') ? link('historial', 'Historial') + link('config', 'Config') : ''}
     </nav>
     <div class="sesion">
       ${global(u)
@@ -405,12 +478,9 @@ function pintarBarra(ruta) {
       <details class="menu-usuario">
         <summary>${esc(u.nombre)} <small>${NOMBRE_ROL[u.rol]}</small></summary>
         <div>
-          <label>Entrar como
-            <select onchange="cambiarUsuario(this.value)">
-              ${ST.ini.usuarios.map(x => `<option value="${x.id}" ${x.id === u.id ? 'selected' : ''}>${esc(x.nombre)} · ${NOMBRE_ROL[x.rol]}${x.sucursal_id ? ' · ' + esc(sucNombre(x.sucursal_id)) : ''}</option>`).join('')}
-            </select>
-          </label>
-          <span class="suave" style="font-size:12px">Por ahora no hay contraseñas: se elige el usuario acá. ${VERSION}</span>
+          <span class="suave" style="font-size:12px">Entraste como <b>${esc(u.usuario || '')}</b> · ${VERSION}</span>
+          <a href="#clave">Cambiar mi ${u.rol === 'vendedor' ? 'PIN' : 'clave'}</a>
+          <button class="sec" onclick="salir()">Salir</button>
         </div>
       </details>
     </div>`;
@@ -421,8 +491,13 @@ async function render() {
   const [ruta, arg] = (location.hash.slice(1) || 'inicio').split('/');
   const r = RUTAS[ruta] || RUTAS.inicio;
   pintarBarra(ruta);
-  if (!usuario()) { $('app').innerHTML = vSinUsuarios(); return; }
+  if (!usuario()) { document.title = `Entrar · TechPoint ${VERSION}`; $('app').innerHTML = vEntrar(); return; }
+  if (ST.ini.yo.debe_cambiar && ruta !== 'clave') return ir('#clave');      // primero, una clave propia
   if (r.rol && !es(r.rol)) { avisar('No tenés permiso para entrar ahí.', true); return ir('#inicio'); }
+  if (Date.now() - (ST.ping || 0) > 5 * 60 * 1000) {                        // mantener viva la sesión mientras se usa
+    ST.ping = Date.now();
+    sb.rpc('tp_ping').then(({ data }) => { if (data && !data.ok) { ST.ini = { ...ST.ini, yo: null }; ST.uid = null; render(); } });
+  }
   document.title = `${r.t} · TechPoint ${VERSION}`;
   const aviso = ST.aviso; ST.aviso = null;
   try {
@@ -436,16 +511,29 @@ async function render() {
 }
 const despues = f => { window.__despues = f; };
 
-function vSinUsuarios() {
-  return `<div class="acceso panel"><div class="marca-acceso"><i class="guion"></i>techpoint<i class="punto"></i><span>sistema de ventas</span></div>
-    <p>La base está vacía.</p>
-    ${ST.ini.modo === 'prueba' ? '<button onclick="sembrar()">Cargar datos de ejemplo</button>' : ''}</div>`;
-}
-
-async function sembrar() {
-  if (!confirm('¿Borrar todo y volver a los datos de ejemplo?')) return;
-  try { await rpc('tp_sembrar_prueba'); await cargarInicial(); avisar('Listo: datos de ejemplo cargados.'); ir('#inicio'); }
-  catch (e) { alert(e.message); }
+// ---------------------------------------------------------------- historial (dueño y superadmin)
+const H = { desde: null, hasta: null, quien: '', q: '' };
+async function vHistorial() {
+  H.desde = H.desde || hoy(); H.hasta = H.hasta || hoy();
+  const filas = await rpc('tp_historial', { ...U(), p_desde: H.desde, p_hasta: H.hasta, p_quien: H.quien ? +H.quien : null, p_q: H.q });
+  return `<h1>Historial</h1>
+  <p class="suave">Quién hizo qué y cuándo: entradas, ventas, anulaciones, caja, productos, precios, usuarios y configuración. Nadie lo puede borrar ni cambiar.</p>
+  <form class="panel fila" onsubmit="event.preventDefault();H.desde=this.desde.value;H.hasta=this.hasta.value;H.quien=this.quien.value;H.q=this.q.value;render()">
+    <label>Desde<input type="date" name="desde" value="${H.desde}"></label>
+    <label>Hasta<input type="date" name="hasta" value="${H.hasta}"></label>
+    <label>Quién<select name="quien"><option value="">Todos</option>
+      ${ST.ini.usuarios.map(x => `<option value="${x.id}" ${String(H.quien) === String(x.id) ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select></label>
+    <label>Buscar<input name="q" value="${esc(H.q)}" placeholder="anuló, precio, #123…"></label>
+    <button>Ver</button>
+  </form>
+  <div class="panel tabla-scroll">
+    <p><b>${filas.length}</b> movimientos${filas.length === 1000 ? ' (se muestran los últimos 1000: achicá las fechas)' : ''}</p>
+    <table><tr><th>Fecha</th><th>Quién</th><th>Local</th><th>Qué hizo</th><th>Detalle</th></tr>
+      ${filas.map(h => `<tr><td style="white-space:nowrap">${fc(h.ts)}</td><td>${esc(h.usuario || '—')}</td><td>${esc(h.sucursal || '')}</td>
+        <td class="${/fallido|Anuló|Borró|baja/i.test(h.accion) ? 'alerta' : ''}">${esc(h.accion)}</td><td>${esc(h.detalle || '')}</td></tr>`).join('')
+        || '<tr><td colspan="5" class="suave">Nada en esas fechas.</td></tr>'}
+    </table>
+  </div>`;
 }
 
 // ---------------------------------------------------------------- inicio
@@ -1402,22 +1490,30 @@ async function vConfig() {
       <b>Supervisor</b>: lo mismo que el encargado, en todos los locales.
       <b>Dueño</b> y <b>Superadministrador</b>: todo; son los únicos que crean usuarios, definen roles y permisos, y cambian productos y precios.</p>
     <p class="suave"><b>Rotación:</b> marcá en "Otros locales" dónde más puede trabajar cada uno. Al entrar, elige el local arriba a la derecha.</p>
-    <table><tr><th>Nombre</th><th>Rol</th><th>Local principal</th><th>Otros locales</th><th></th></tr>
-      ${d.usuarios.map(u => C.editar === u.id ? `<tr><td colspan="5">
+    <p class="suave"><b>Claves:</b> cada uno entra con su usuario y su clave (el vendedor, con un PIN de 4 a 6 números; el resto, 8 o más caracteres).
+      Las claves las ponen sólo el dueño y los superadministradores; al dueño y a los superadministradores, sólo un superadministrador.
+      La primera vez que alguien entra con la clave que le pusieron, el sistema le pide que ponga una propia.</p>
+    <table><tr><th>Nombre</th><th>Entra como</th><th>Rol</th><th>Local principal</th><th>Otros locales</th><th></th></tr>
+      ${d.usuarios.map(u => C.editar === u.id ? `<tr><td colspan="6">
           <form class="fila" onsubmit="event.preventDefault();guardarConfig('usuario',datosUsuario(this,${u.id}))">
             <label>Nombre<input name="nombre" value="${esc(u.nombre)}" required></label>
+            <label>Usuario para entrar<input name="usuario" value="${esc(u.usuario || '')}" autocapitalize="none" pattern="[A-Za-z0-9._\\-]{3,30}" required></label>
             <label>Rol<select name="rol">${opcRol(u.rol)}</select></label>
             <label>Local principal<select name="suc">${opcSuc(u.sucursal_id)}</select></label>
             <label style="flex-basis:100%">Otros locales donde puede trabajar (no hace falta para supervisor, dueño y superadmin)${checks(u.locales || [])}</label>
             <button>Guardar</button> <button type="button" class="sec" onclick="C.editar=null;render()">Cancelar</button>
           </form></td></tr>`
-        : `<tr><td>${esc(u.nombre)}</td><td>${NOMBRE_ROL[u.rol]}</td><td>${esc(u.sucursal || 'Todos')}</td><td>${esc(localesTxt(u) || '—')}</td>
-          <td class="n"><button class="sec chico" onclick="C.editar=${u.id};render()">Editar</button>
-            ${u.id !== ST.uid ? `<button class="sec chico" onclick="if(confirm('¿Dar de baja a ${esc(u.nombre).replace(/'/g, '')}?'))guardarConfig('baja_usuario',{id:${u.id}})">Baja</button>` : ''}</td></tr>`).join('')}
+        : `<tr><td>${esc(u.nombre)}</td><td>${u.usuario ? esc(u.usuario) : '<span class="alerta">sin usuario</span>'}</td><td>${NOMBRE_ROL[u.rol]}</td>
+          <td>${esc(u.sucursal || 'Todos')}</td><td>${esc(localesTxt(u) || '—')}</td>
+          <td class="n acciones">${puedeManejar(u) ? `<button class="sec chico" onclick="C.editar=${u.id};render()">Editar</button>
+            <button class="sec chico" onclick="claveDe(${u.id},'${esc(u.nombre).replace(/'/g, '')}','${u.rol}')">${u.rol === 'vendedor' ? 'PIN' : 'Clave'}</button>
+            ${u.id !== ST.uid ? `<button class="sec chico" onclick="if(confirm('¿Dar de baja a ${esc(u.nombre).replace(/'/g, '')}? Ya no va a poder entrar.'))guardarConfig('baja_usuario',{id:${u.id}})">Baja</button>` : ''}` : ''}</td></tr>`).join('')}
     </table>
     <h3>Agregar usuario</h3>
     <form class="fila" onsubmit="event.preventDefault();guardarConfig('usuario',datosUsuario(this,null))">
       <label>Nombre<input name="nombre" required></label>
+      <label>Usuario para entrar<input name="usuario" placeholder="ej: lucas.belgrano" autocapitalize="none" pattern="[A-Za-z0-9._\\-]{3,30}" required></label>
+      <label>Clave inicial (vendedor: PIN)<input name="clave" type="password" autocomplete="new-password" required></label>
       <label>Rol<select name="rol">${opcRol('vendedor')}</select></label>
       <label>Local principal<select name="suc">${opcSuc(null)}</select></label>
       <label style="flex-basis:100%">Otros locales donde puede trabajar${checks([])}</label>
@@ -1497,8 +1593,11 @@ async function borrarDatos(f) {
   } catch (e) { avisar(e.message, true); }
   render();
 }
-const datosUsuario = (f, id) => ({ id, nombre: f.nombre.value, rol: f.rol.value, sucursal_id: f.suc.value,
+const datosUsuario = (f, id) => ({ id, nombre: f.nombre.value, usuario: f.usuario.value, clave: f.clave ? f.clave.value : null,
+                                   rol: f.rol.value, sucursal_id: f.suc.value,
                                    locales: [...f.querySelectorAll('[data-local]:checked')].map(c => +c.dataset.local) });
+// Al dueño y a los superadministradores sólo los maneja un superadministrador
+const puedeManejar = x => usuario().rol === 'superadmin' || !['dueno', 'superadmin'].includes(x.rol) || x.id === ST.uid;
 async function guardarConfig(accion, datos) {
   try {
     await rpc('tp_config_guardar', { ...U(), p_accion: accion, p_datos: datos });
