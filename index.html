@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ventas · TechPoint v8</title>
+<title>Ventas · TechPoint v14</title>
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Crect x='12' y='40' width='24' height='7' fill='%23ff1a8c'/%3E%3Crect x='42' y='36' width='11' height='11' fill='%232b3fe0'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -120,6 +120,11 @@ details.panel summary b { font-weight: 500; }
 .barra-prog { height: 6px; background: var(--panel-2); overflow: hidden; min-width: 100px; }
 .barra-prog i { display: block; height: 100%; background: linear-gradient(90deg, var(--rosa), var(--azul)); }
 .barra-prog i.ok { background: var(--ok); }
+[hidden] { display: none !important; }
+.barra-dato { height: 8px; min-width: 120px; }
+.barra-dato i { display: block; height: 100%; background: var(--azul-claro); border-radius: 0 4px 4px 0; }
+table.con-barras td:last-child { width: 30%; }
+.kpi .var { display: block; font-size: 12px; margin-top: 6px; }
 
 .venta { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; }
 .venta > .panel { position: sticky; top: 76px; border-top: 3px solid var(--rosa); }
@@ -222,7 +227,7 @@ select.cat-fila { padding: 3px 6px; font-size: 13px; max-width: 150px; }
    Todo lo que mueve plata o stock lo hace la base (todo o nada).
    Por ahora sin pantalla de login: se elige "con qué usuario entrar" arriba a la derecha.
    ===================================================================== */
-const VERSION = 'v12';
+const VERSION = 'v14';
 // Base propia del dueño (Supabase, organización TechPoint) desde el 24/10/2026. Antes: orbe-clientes de José.
 const NUBE = { url: 'https://ihmnfcmkvckhueowkzet.supabase.co', key: 'sb_publishable_fltCybLk39k92dPRant28A_FT8pGJRL' };
 const MEDIOS = ['Efectivo', 'Débito', 'Crédito', 'Transferencia', 'Mercado Pago'];
@@ -263,7 +268,7 @@ const MARCAS_CEL = ['Samsung', 'iPhone', 'Motorola', 'Xiaomi', 'Otra'];
 const MESES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 let sb = null;
-const ST = { ini: null, uid: null, suc: null, aviso: null };
+const ST = { ini: null, uid: null, suc: null, aviso: null, pintadas: 0, html: null, avisoHtml: '' };
 
 // ---------------------------------------------------------------- utilidades
 const $ = id => document.getElementById(id);
@@ -359,6 +364,8 @@ async function iniciar() {
     if (!session) { const r = await sb.auth.signInAnonymously(); if (r.error) throw r.error; }
     await cargarInicial();
     window.addEventListener('hashchange', render);
+    setInterval(actualizarSola, CADA);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) actualizarSola(); });
     render();
   } catch (e) {
     $('app').innerHTML = `<div class="acceso panel"><div class="marca-acceso"><i class="guion"></i>techpoint<i class="punto"></i></div>
@@ -396,7 +403,7 @@ async function entrar(f) {
   try {
     const r = await rpc('tp_entrar', { p_login: f.login.value, p_clave: f.clave.value });
     if (!r.ok) { $('estado-entrar').textContent = r.error; f.clave.value = ''; f.clave.focus(); return; }
-    await cargarInicial(); ir(ST.ini.yo && ST.ini.yo.debe_cambiar ? '#clave' : '#inicio');
+    await cargarInicial(); ir(debeCambiar() ? '#clave' : '#inicio');
   } catch (e) { $('estado-entrar').textContent = e.message; }
   finally { b.disabled = false; }
 }
@@ -412,10 +419,13 @@ async function salir() {
   try { await rpc('tp_salir'); } catch (e) {}
   await cargarInicial(); ir('#inicio');
 }
+// Vendedores (pedido del dueño, 25/10/2026): pueden quedarse con el PIN que les dieron (por ejemplo 1234), no se los obliga a cambiarlo.
+// El resto de los roles, la primera vez que entra con una clave que le puso otro, tiene que poner una propia.
+const debeCambiar = () => !!(ST.ini.yo && ST.ini.yo.debe_cambiar && ST.ini.yo.rol !== 'vendedor');
 function vMiClave() {
   const u = usuario();
-  return `<h1>${ST.ini.yo.debe_cambiar ? 'Poné tu propio PIN' : 'Cambiar mi PIN'}</h1>
-    ${ST.ini.yo.debe_cambiar ? `<div class="aviso">Entraste con un PIN que te dieron. Antes de seguir, poné uno propio.</div>` : ''}
+  return `<h1>${debeCambiar() ? 'Poné tu propio PIN' : 'Cambiar mi PIN'}</h1>
+    ${debeCambiar() ? `<div class="aviso">Entraste con un PIN que te dieron. Antes de seguir, poné uno propio.</div>` : ''}
     <form class="panel" style="max-width:420px" onsubmit="event.preventDefault();cambiarMiClave(this)">
       <div class="fila" style="flex-direction:column;align-items:stretch">
         <label>PIN actual<input name="actual" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" required></label>
@@ -434,7 +444,7 @@ async function cambiarMiClave(f) {
 }
 // Poner la clave de otro (dueño y superadmin; al dueño y a los superadmin, sólo un superadmin)
 async function claveDe(id, nombre, rol) {
-  const c = prompt(`PIN nuevo (4 números) para ${nombre}.\nAl entrar le va a pedir que ponga una propia.`);
+  const c = prompt(`PIN nuevo (4 números) para ${nombre}.\n${rol === 'vendedor' ? 'Lo puede seguir usando (no se le pide cambiarlo).' : 'Al entrar le va a pedir que ponga una propia.'}`);
   if (!c) return;
   try { await rpc('tp_usuario_clave', { ...U(), p_id: id, p_clave: c }); avisar(`Listo: ${nombre} ya tiene clave nueva. Sus sesiones abiertas se cerraron.`); }
   catch (e) { avisar(e.message, true); }
@@ -489,11 +499,12 @@ function pintarBarra(ruta) {
 
 async function render() {
   document.body.classList.remove('imprime-ticket');
+  const n = ++ST.pintadas; ST.html = null;                                  // corta cualquier actualización automática en curso
   const [ruta, arg] = (location.hash.slice(1) || 'inicio').split('/');
   const r = RUTAS[ruta] || RUTAS.inicio;
   pintarBarra(ruta);
   if (!usuario()) { document.title = `Entrar · TechPoint ${VERSION}`; $('app').innerHTML = vEntrar(); return; }
-  if (ST.ini.yo.debe_cambiar && ruta !== 'clave') return ir('#clave');      // primero, una clave propia
+  if (debeCambiar() && ruta !== 'clave') return ir('#clave');               // primero, una clave propia (salvo vendedores)
   if (r.rol && !es(r.rol)) { avisar('No tenés permiso para entrar ahí.', true); return ir('#inicio'); }
   if (Date.now() - (ST.ping || 0) > 5 * 60 * 1000) {                        // mantener viva la sesión mientras se usa
     ST.ping = Date.now();
@@ -503,14 +514,51 @@ async function render() {
   const aviso = ST.aviso; ST.aviso = null;
   try {
     const html = await r.f(arg);
-    $('app').innerHTML = (aviso ? `<div class="aviso ${aviso.error ? 'error' : ''}">${esc(aviso.msg)}</div>` : '') + html;
-    if (r.despues) r.despues();
-    if (window.__despues) { const f = window.__despues; window.__despues = null; f(); }
+    if (n !== ST.pintadas) { window.__despues = null; return; }             // mientras cargaba se pidió otra pantalla
+    pintar(r, html, aviso ? `<div class="aviso ${aviso.error ? 'error' : ''}">${esc(aviso.msg)}</div>` : '');
   } catch (e) {
     $('app').innerHTML = `<div class="aviso error">${esc(e.message)}</div>`;
   }
 }
 const despues = f => { window.__despues = f; };
+function pintar(r, html, aviso) {
+  ST.html = html; ST.avisoHtml = aviso;
+  $('app').innerHTML = aviso + html;
+  if (r.despues) r.despues();
+  if (window.__despues) { const f = window.__despues; window.__despues = null; f(); }
+}
+
+// ---------------------------------------------------------------- se actualiza sola
+// Las pantallas de consulta se vuelven a pedir cada 30 s (y al volver a la pestaña), así se ve lo que vende otro local.
+// Sólo se repinta si algo cambió y nunca mientras alguien está escribiendo o eligiendo algo en la pantalla.
+// No renueva la sesión (eso lo hace tp_ping al usar la pantalla), así que una PC olvidada igual vence a las 12 h.
+const SE_ACTUALIZAN = ['inicio', 'ventas', 'caja', 'reportes', 'historial'];   // ninguna usa despues()
+const CADA = 30 * 1000;
+function editando() {
+  const app = $('app'), a = document.activeElement;
+  if (a && app.contains(a) && a.matches('input, select, textarea')) return true;
+  const sel = window.getSelection && window.getSelection();
+  if (sel && !sel.isCollapsed && app.contains(sel.anchorNode)) return true;      // está marcando texto para copiar
+  return [...app.querySelectorAll('input, select, textarea')].some(el => {
+    if (el.tagName === 'SELECT') { const def = [...el.options].findIndex(o => o.defaultSelected); return el.selectedIndex !== (def < 0 ? 0 : def); }
+    if (el.type === 'checkbox' || el.type === 'radio') return el.checked !== el.defaultChecked;
+    return el.value !== el.defaultValue;
+  });
+}
+async function actualizarSola() {
+  if (document.hidden || !usuario() || debeCambiar() || ST.html == null) return;
+  const hash = location.hash, [ruta, arg] = (hash.slice(1) || 'inicio').split('/');
+  const r = RUTAS[ruta];
+  if (!SE_ACTUALIZAN.includes(ruta) || !r || (r.rol && !es(r.rol)) || editando()) return;
+  const n = ST.pintadas;
+  let html;
+  try { html = await r.f(arg); } catch (e) { return; }                     // sin internet: se reintenta en la próxima vuelta
+  if (n !== ST.pintadas || location.hash !== hash || html === ST.html || editando()) return;
+  const scroll = [...$('app').querySelectorAll('.tabla-scroll')].map(t => t.scrollLeft);
+  ST.html = html;
+  $('app').innerHTML = ST.avisoHtml + html;
+  $('app').querySelectorAll('.tabla-scroll').forEach((t, i) => { t.scrollLeft = scroll[i] || 0; });
+}
 
 // ---------------------------------------------------------------- historial (dueño y superadmin)
 const H = { desde: null, hasta: null, quien: '', q: '' };
@@ -805,7 +853,7 @@ async function cobrar() {
 const F = { desde: null, hasta: null, suc: '' };     // filtros de ventas y reportes (se recuerdan mientras la página está abierta)
 
 function filtroPeriodo(conSucursal, extra) {
-  return `<form class="panel fila no-imprimir" onsubmit="event.preventDefault();F.desde=this.desde.value;F.hasta=this.hasta.value;F.suc=this.suc?this.suc.value:'';render()">
+  return `<form class="panel fila no-imprimir" onsubmit="event.preventDefault();F.desde=this.desde.value;F.hasta=this.hasta.value;F.elegido=true;F.suc=this.suc?this.suc.value:'';render()">
     <label>Desde<input type="date" name="desde" value="${F.desde}"></label>
     <label>Hasta<input type="date" name="hasta" value="${F.hasta}"></label>
     ${conSucursal && global() ? `<label>Sucursal<select name="suc"><option value="">Todas</option>
@@ -1393,11 +1441,59 @@ function panelMedios(r, sid) {
     </table>` : ''}
   </div>`;
 }
+// Atajos de período y secciones que se pueden ocultar (se recuerda en este navegador)
+const DIAS_SEM = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const iso = d => d.toISOString().slice(0, 10);
+const sumarDias = (s, n) => { const d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
+const ddmm = s => `${s.slice(8, 10)}/${s.slice(5, 7)}`;
+function rangoAtajo(k) {
+  const h = hoy(), d = new Date(h + 'T12:00:00Z'), m1 = h.slice(0, 8) + '01';
+  const dow = (d.getUTCDay() + 6) % 7;                                    // 0 = lunes
+  const finMesPasado = sumarDias(m1, -1);
+  return { hoy: [h, h], ayer: [sumarDias(h, -1), sumarDias(h, -1)], semana: [sumarDias(h, -dow), h], '7': [sumarDias(h, -6), h],
+           mes: [m1, h], pasado: [finMesPasado.slice(0, 8) + '01', finMesPasado], '30': [sumarDias(h, -29), h], anio: [h.slice(0, 5) + '01-01', h] }[k];
+}
+const ATAJOS = [['hoy', 'Hoy'], ['ayer', 'Ayer'], ['semana', 'Esta semana'], ['7', 'Últimos 7 días'], ['mes', 'Este mes'], ['pasado', 'Mes pasado'], ['30', 'Últimos 30 días'], ['anio', 'Este año']];
+function atajo(k) { [F.desde, F.hasta] = rangoAtajo(k); F.elegido = true; render(); }
+const SECCIONES = [['objetivos', 'Objetivos'], ['dias', 'Día por día'], ['horarios', 'Días y horarios'], ['vendedores', 'Tickets por vendedor'],
+  ['categorias', 'Categorías'], ['productos', 'Productos'], ['fundas', 'Fundas y protectores'], ['clases', 'Originales y genéricos'],
+  ['medios', 'Medios de pago'], ['caja', 'Caja: ingresos y egresos'], ['clientes', 'Clientes'], ['control', 'Cambios, anulaciones y descuentos']];
+const R = { ocultas: leer('rep-ocultas', []), cajaTipo: '', cajaQuien: '', cajaSuc: '', movs: [] };
+// Cambio contra el período anterior, corto (para tablas)
+const varCorta = (ahora, antes) => { ahora = +ahora; antes = +antes; if (!antes) return '<span class="suave">—</span>';
+  const p = (ahora - antes) / Math.abs(antes) * 100;
+  return Math.abs(p) < 0.5 ? '<span class="suave">=</span>' : `<span class="${p > 0 ? 'ok' : 'mal'}">${p > 0 ? '▲' : '▼'} ${Math.round(Math.abs(p))} %</span>`; };
+function filtroCaja(campo, valor) { R[campo] = valor; render(); }
+function descargarMovs() {
+  const filas = R.movs.map(m => [m.fecha, m.sucursal, m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso', m.concepto, m.usuario || '', m.tipo === 'egreso' ? -m.monto : +m.monto]);
+  descargar(`caja_ingresos_egresos_${F.desde}_${F.hasta}.csv`, '\ufeff' + [['Fecha', 'Local', 'Tipo', 'Concepto', 'Quién', 'Monto'], ...filas].map(f => f.map(celdaCsv).join(';')).join('\r\n'), 'text/csv');
+}
+function verSeccion(k) {
+  R.ocultas = R.ocultas.includes(k) ? R.ocultas.filter(x => x !== k) : [...R.ocultas, k];
+  guardar('rep-ocultas', R.ocultas);
+  document.querySelectorAll(`[data-sec="${k}"]`).forEach(el => { el.hidden = R.ocultas.includes(k); });
+  document.querySelectorAll(`[data-chip="${k}"]`).forEach(el => el.classList.toggle('activa', !R.ocultas.includes(k)));
+}
+function verTodas(si) { R.ocultas = si ? [] : SECCIONES.map(s => s[0]); guardar('rep-ocultas', R.ocultas); render(); }
+const sec = (k, html) => html.replace(/^(\s*<div)/, `$1 data-sec="${k}"${R.ocultas.includes(k) ? ' hidden' : ''}`);
+// Barra de un valor (sólo positivos), con el número a la vista en la tabla y en el tooltip
+const barra = (v, max, titulo) => `<div class="barra-dato" title="${esc(titulo)}"><i style="width:${max > 0 && v > 0 ? Math.max(2, v / max * 100) : 0}%"></i></div>`;
+// Cambio contra el período anterior: flecha + % (nunca sólo color)
+function variacion(ahora, antes) {
+  ahora = +ahora; antes = +antes;
+  if (!antes) return '<span class="var suave">sin datos del período anterior</span>';
+  const p = (ahora - antes) / Math.abs(antes) * 100;
+  if (Math.abs(p) < 0.5) return '<span class="var suave">= igual que el período anterior</span>';
+  return `<span class="var ${p > 0 ? 'ok' : 'mal'}">${p > 0 ? '▲' : '▼'} ${Math.round(Math.abs(p))} % vs período anterior</span>`;
+}
+
 async function vReportes() {
-  F.desde = F.desde && F.desde !== hoy() ? F.desde : inicioMes(); F.hasta = F.hasta || hoy();
+  F.desde = F.desde && (F.elegido || F.desde !== hoy()) ? F.desde : inicioMes(); F.hasta = F.hasta || hoy();
   if (F.suc === '' && global() && ST.suc) F.suc = String(ST.suc);
   const sid = sucFiltro();
-  const r = await rpc('tp_reportes', { ...U(), p_desde: F.desde, p_hasta: F.hasta, p_suc: sid });
+  const args = { ...U(), p_desde: F.desde, p_hasta: F.hasta, p_suc: sid };
+  const [r, x] = await Promise.all([rpc('tp_reportes', args), rpc('tp_reportes_extra', args).catch(e => ({ falta: e.message }))]);
+  const hayExtra = x && !x.falta;
   const mes = MESES[+F.hasta.slice(5, 7)];
   const grupos = {};
   r.fundas.forEach(f => { const m = MARCAS_PRINCIPALES.includes(f.marca) ? f.marca : 'Otras marcas'; const g = grupos[m] = grupos[m] || { marca: m, total: 0, modelos: [] }; g.total += +f.total; g.modelos.push(f); });
@@ -1413,64 +1509,248 @@ async function vReportes() {
       <td class="n"><b>${tu ? pct(k.original.unidades / tu * 100) : '—'}</b> / ${tu ? pct(k.generico.unidades / tu * 100) : '—'}</td>
       <td class="n">${ti ? pct(k.original.importe / ti * 100) : '—'} / ${ti ? pct(k.generico.importe / ti * 100) : '—'}</td>
       <td class="n ${k.sin_definir.unidades ? 'alerta' : 'suave'}">${k.sin_definir.unidades || '—'}</td></tr>`; };
+  const totalPeriodo = +r.res.total;
+  const pctTotal = v => totalPeriodo > 0 ? pct(v / totalPeriodo * 100) : '—';
+  const ticket = (t, n) => n > 0 ? fmt(t / n) : '—';
+  const falta = `<p class="aviso">Esta parte necesita el SQL <b>013</b> (reportes completos) corrido en Supabase.</p>`;
+  const ant = hayExtra ? x.anterior : null;
+  const anuladas = hayExtra ? x.anuladas.reduce((s, a) => s + +a.cantidad, 0) : 0;
+
+  // Día por día (con más de 62 días se agrupa por mes)
+  let dias = '';
+  if (hayExtra) {
+    let filas = x.dias.map(d => ({ et: `${DIAS_SEM[(new Date(d.dia + 'T12:00:00Z').getUTCDay() + 6) % 7 + 1].slice(0, 3)} ${ddmm(d.dia)}`, ...d }));
+    let porMes = false;
+    if (filas.length > 62) {
+      porMes = true;
+      const m = {};
+      x.dias.forEach(d => { const k = d.dia.slice(0, 7); const g = m[k] = m[k] || { et: `${MESES[+k.slice(5)]} ${k.slice(0, 4)}`, ventas: 0, unidades: 0, total: 0 };
+        g.ventas += +d.ventas; g.unidades += +d.unidades; g.total += +d.total; });
+      filas = Object.values(m);
+    }
+    const max = Math.max(0, ...filas.map(f => +f.total));
+    const conVenta = x.dias.filter(d => +d.ventas > 0);
+    const mejor = conVenta.reduce((a, d) => !a || +d.total > +a.total ? d : a, null);
+    dias = `<div class="kpis">
+        <div class="kpi"><small>Mejor día</small><b>${mejor ? fmt(mejor.total) : '—'}</b> <span class="suave">${mejor ? DIAS_SEM[(new Date(mejor.dia + 'T12:00:00Z').getUTCDay() + 6) % 7 + 1] + ' ' + ddmm(mejor.dia) : ''}</span></div>
+        <div class="kpi"><small>Días con ventas</small><b>${conVenta.length}</b> <span class="suave">de ${x.largo}</span></div>
+      </div>
+      <table class="con-barras"><tr><th>${porMes ? 'Mes' : 'Día'}</th><th class="n">Ventas</th><th class="n">Unid.</th><th class="n">Total</th><th></th></tr>
+        ${filas.map(f => `<tr><td style="white-space:nowrap">${f.et}</td><td class="n">${f.ventas}</td><td class="n">${f.unidades}</td><td class="n">${fmt(f.total)}</td>
+          <td>${barra(+f.total, max, `${f.et}: ${fmt(f.total)}`)}</td></tr>`).join('')}
+      </table>`;
+  }
+  // Días de la semana y horarios
+  let horarios = '';
+  if (hayExtra) {
+    const maxS = Math.max(0, ...x.semana.map(s => +s.promedio));
+    const horas = x.horas.filter(h => +h.ventas > 0), maxH = Math.max(0, ...horas.map(h => +h.ventas));
+    horarios = `<div class="grilla" style="margin-bottom:0">
+      <div class="tabla-scroll"><h3>Por día de la semana</h3>
+        <table class="con-barras"><tr><th>Día</th><th class="n">Ventas</th><th class="n">Total</th><th class="n">Promedio por día</th><th></th></tr>
+          ${x.semana.map(s => `<tr><td style="white-space:nowrap">${DIAS_SEM[s.dow]} <span class="suave">(${s.dias})</span></td><td class="n">${s.ventas}</td><td class="n">${fmt(s.total)}</td>
+            <td class="n"><b>${fmt(s.promedio)}</b></td><td>${barra(+s.promedio, maxS, `${DIAS_SEM[s.dow]}: ${fmt(s.promedio)} por día`)}</td></tr>`).join('')}
+        </table>
+        <p class="suave">Entre paréntesis, cuántos de esos días entran en el período.</p></div>
+      <div class="tabla-scroll"><h3>Por horario</h3>
+        <table class="con-barras"><tr><th>Horario</th><th class="n">Ventas</th><th class="n">Total</th><th></th></tr>
+          ${horas.map(h => `<tr><td>${h.hora} a ${h.hora + 1} h</td><td class="n"><b>${h.ventas}</b></td><td class="n">${fmt(h.total)}</td>
+            <td>${barra(+h.ventas, maxH, `${h.hora} a ${h.hora + 1} h: ${h.ventas} ventas`)}</td></tr>`).join('') || '<tr><td colspan="4" class="suave">Sin ventas en el período.</td></tr>'}
+        </table></div>
+    </div>`;
+  }
+  // Categorías
+  let categorias = '';
+  if (hayExtra) {
+    const maxC = Math.max(0, ...x.categorias.map(c => +c.importe));
+    categorias = `<table class="con-barras"><tr><th>Categoría</th><th class="n">Unid.</th><th class="n">Importe</th><th class="n">% del total</th><th></th></tr>
+      ${x.categorias.map(c => `<tr><td>${esc(c.categoria)}</td><td class="n">${c.unidades}</td><td class="n">${fmt(c.importe)}</td><td class="n">${pctTotal(+c.importe)}</td>
+        <td>${barra(+c.importe, maxC, `${c.categoria}: ${fmt(c.importe)}`)}</td></tr>`).join('') || '<tr><td colspan="5" class="suave">Sin ventas en el período.</td></tr>'}
+    </table>`;
+  }
+  // Clientes
+  let clientes = '';
+  if (hayExtra) {
+    const c = x.clientes, volvieron = +c.distintos - +c.nuevos;
+    clientes = `<div class="kpis">
+        <div class="kpi"><small>Ventas con cliente</small><b>${c.ventas ? pct(c.con_cliente / c.ventas * 100) : '—'}</b> <span class="suave">· ${c.con_cliente} de ${c.ventas}</span></div>
+        <div class="kpi"><small>Clientes distintos</small><b>${c.distintos}</b></div>
+        <div class="kpi"><small>Clientes nuevos</small><b>${c.nuevos}</b></div>
+        <div class="kpi"><small>Volvieron a comprar</small><b>${volvieron}</b></div>
+      </div>
+      <h3>Los 10 que más compraron</h3>
+      <table><tr><th>#</th><th>Cliente</th><th>Teléfono</th><th class="n">Compras</th><th class="n">Total</th><th>Última</th></tr>
+        ${c.top.map((t, i) => `<tr><td>${i + 1}</td><td><a href="#cliente/${t.id}">${esc(t.nombre || 'Sin nombre')}</a></td><td>${esc(telVisible(t.telefono))}</td>
+          <td class="n">${t.compras}</td><td class="n"><b>${fmt(t.total)}</b></td><td>${fc(t.ultima)}</td></tr>`).join('') || '<tr><td colspan="6" class="suave">Ninguna venta con teléfono en el período.</td></tr>'}
+      </table>
+      <p class="suave">"Nuevos": su primera compra es de este período. "Volvieron": ya habían comprado antes. Sólo cuentan las ventas donde se cargó el teléfono.</p>`;
+  }
+  // Tickets por vendedor (tickets = ventas, sin cambios ni devoluciones)
+  let tickets = '';
+  if (hayExtra) {
+    const dec = n => n.toLocaleString('es-AR', { maximumFractionDigits: 1 });
+    tickets = `<p class="suave">Ticket = una venta (los cambios y devoluciones no cuentan). Ticket promedio = lo que se vendió en esos tickets dividido la cantidad.
+        La flecha compara con el período anterior (${ddmm(ant.desde)} al ${ddmm(ant.hasta)}).</p>
+      <table><tr><th>Vendedor</th>${!sid ? '<th>Local</th>' : ''}<th class="n">Tickets</th><th class="n"></th><th class="n">Días con ventas</th><th class="n">Tickets por día</th>
+        <th class="n">Ticket promedio</th><th class="n"></th><th class="n">Mayor ticket</th><th class="n">Unid. por ticket</th><th class="n">Vendido</th><th class="n">% del total</th></tr>
+        ${x.tickets.map(t => `<tr><td style="white-space:nowrap">${esc(t.vendedor)}</td>${!sid ? `<td style="white-space:nowrap">${esc(t.sucursal)}</td>` : ''}<td class="n"><b>${t.tickets}</b></td><td class="n">${varCorta(t.tickets, t.tickets_ant)}</td>
+          <td class="n">${t.dias}</td><td class="n">${t.dias ? dec(t.tickets / t.dias) : '—'}</td>
+          <td class="n"><b>${t.promedio == null ? '—' : fmt(t.promedio)}</b></td><td class="n">${t.promedio_ant == null ? '<span class="suave">—</span>' : varCorta(t.promedio, t.promedio_ant)}</td>
+          <td class="n">${t.mayor == null ? '—' : fmt(t.mayor)}</td><td class="n">${+t.tickets ? dec(t.unidades / t.tickets) : '—'}</td>
+          <td class="n">${fmt(t.vendido)}</td><td class="n">${pctTotal(+t.vendido)}</td></tr>`).join('') || '<tr><td colspan="12" class="suave">Sin ventas en el período.</td></tr>'}
+      </table>`;
+  }
+  // Caja: ingresos y egresos de efectivo, y cada caja del período
+  let caja = '';
+  if (hayExtra) {
+    const todos = x.caja.movs, cierres = x.caja.cierres;
+    const quienes = [...new Set(todos.map(m => m.usuario || '(sin dato)'))].sort();
+    const locales = [...new Set(todos.map(m => m.sucursal))].sort();
+    if (R.cajaQuien && !quienes.includes(R.cajaQuien)) R.cajaQuien = '';
+    if (R.cajaSuc && !locales.includes(R.cajaSuc)) R.cajaSuc = '';
+    const movs = R.movs = todos.filter(m => (!R.cajaTipo || m.tipo === R.cajaTipo) && (!R.cajaQuien || (m.usuario || '(sin dato)') === R.cajaQuien) && (!R.cajaSuc || m.sucursal === R.cajaSuc));
+    const sumar = (l, t) => l.filter(m => m.tipo === t).reduce((a, m) => a + +m.monto, 0);
+    const ing = sumar(movs, 'ingreso'), egr = sumar(movs, 'egreso');
+    const cerradas = cierres.filter(c => c.estado === 'cerrada'), conDif = cerradas.filter(c => Math.abs(+c.diferencia) >= 1);
+    const agrupar = clave => { const g = {}; movs.forEach(m => { const k = clave(m); const o = g[k] = g[k] || { k, ni: 0, i: 0, ne: 0, e: 0 };
+      if (m.tipo === 'ingreso') { o.ni++; o.i += +m.monto; } else { o.ne++; o.e += +m.monto; } }); return Object.values(g).sort((a, b) => (b.i + b.e) - (a.i + a.e)); };
+    const tablaGrupo = (titulo, filas) => `<table><tr><th>${titulo}</th><th class="n">Ingresos</th><th class="n">$ ingresado</th><th class="n">Egresos</th><th class="n">$ egresado</th><th class="n">Neto</th></tr>
+      ${filas.map(o => `<tr><td>${esc(o.k)}</td><td class="n">${o.ni}</td><td class="n ok">${fmt(o.i)}</td><td class="n">${o.ne}</td><td class="n mal">${fmt(-o.e)}</td><td class="n"><b>${fmt(o.i - o.e)}</b></td></tr>`).join('')
+        || '<tr><td colspan="6" class="suave">Ningún movimiento.</td></tr>'}</table>`;
+    const opcion = (v, t, actual) => `<option value="${esc(v)}" ${actual === v ? 'selected' : ''}>${esc(t)}</option>`;
+    caja = `<p class="suave">Lo que se agrega (ingresos) o se saca (egresos) de la caja a mano, aparte de las ventas: retiros, gastos, cambio, etc. "Quién" sale del historial.</p>
+      <div class="fila no-imprimir" style="margin-bottom:14px">
+        <label>Tipo<select onchange="filtroCaja('cajaTipo',this.value)">${opcion('', 'Ingresos y egresos', R.cajaTipo)}${opcion('ingreso', 'Sólo ingresos', R.cajaTipo)}${opcion('egreso', 'Sólo egresos', R.cajaTipo)}</select></label>
+        <label>Quién<select onchange="filtroCaja('cajaQuien',this.value)">${opcion('', 'Todos', R.cajaQuien)}${quienes.map(q => opcion(q, q, R.cajaQuien)).join('')}</select></label>
+        ${!sid ? `<label>Local<select onchange="filtroCaja('cajaSuc',this.value)">${opcion('', 'Todos', R.cajaSuc)}${locales.map(q => opcion(q, q, R.cajaSuc)).join('')}</select></label>` : ''}
+        <button type="button" class="sec" onclick="descargarMovs()">Descargar movimientos (CSV)</button>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><small>Ingresado</small><b class="ok">${fmt(ing)}</b> <span class="suave">· ${movs.filter(m => m.tipo === 'ingreso').length}</span></div>
+        <div class="kpi"><small>Egresado</small><b class="mal">${fmt(-egr)}</b> <span class="suave">· ${movs.filter(m => m.tipo === 'egreso').length}</span></div>
+        <div class="kpi"><small>Neto</small><b>${fmt(ing - egr)}</b></div>
+        <div class="kpi"><small>Cierres con diferencia</small><b class="${conDif.length ? 'alerta' : ''}">${conDif.length}</b> <span class="suave">de ${cerradas.length} · ${fmt(conDif.reduce((a, c) => a + +c.diferencia, 0))}</span></div>
+      </div>
+      ${!sid && !R.cajaSuc ? `<h3>Por local</h3>${tablaGrupo('Local', agrupar(m => m.sucursal))}` : ''}
+      <h3 style="margin-top:18px">Por persona</h3>${tablaGrupo('Quién', agrupar(m => m.usuario || '(sin dato)'))}
+      <h3 style="margin-top:18px">Detalle <span class="suave">· ${movs.length}${todos.length === 3000 ? ' (los últimos 3000: achicá las fechas)' : ''}</span></h3>
+      <table><tr><th>Fecha</th>${!sid ? '<th>Local</th>' : ''}<th>Tipo</th><th>Concepto</th><th>Quién</th><th class="n">Monto</th></tr>
+        ${movs.map(m => `<tr><td style="white-space:nowrap">${fc(m.fecha)}</td>${!sid ? `<td>${esc(m.sucursal)}</td>` : ''}
+          <td><span class="etiqueta ${m.tipo === 'ingreso' ? 'azul' : 'rosa'}">${m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}</span></td>
+          <td>${esc(m.concepto)}</td><td>${esc(m.usuario || '—')}</td><td class="n ${m.tipo === 'ingreso' ? 'ok' : 'mal'}">${fmt(m.tipo === 'egreso' ? -m.monto : m.monto)}</td></tr>`).join('')
+          || `<tr><td colspan="6" class="suave">Ningún ingreso ni egreso${R.cajaTipo || R.cajaQuien || R.cajaSuc ? ' con ese filtro' : ' en el período'}.</td></tr>`}
+      </table>
+      <h3 style="margin-top:22px">Cajas del período <span class="suave">· ${cierres.length}</span></h3>
+      <table><tr><th>Fecha</th>${!sid ? '<th>Local</th>' : ''}<th>Abrió</th><th>Cerró</th><th class="n">Apertura</th><th class="n">+ Efectivo ventas</th><th class="n">+ Ingresos</th><th class="n">− Egresos</th>
+          <th class="n">Esperado</th><th class="n">Contado</th><th class="n">Diferencia</th><th>Obs.</th></tr>
+        ${cierres.map(c => `<tr><td style="white-space:nowrap">${ddmm(c.fecha)}</td>${!sid ? `<td>${esc(c.sucursal)}</td>` : ''}
+          <td>${esc(c.abierta_por || '—')} <span class="suave">${(c.abierta_en || '').slice(11, 16)}</span></td>
+          <td>${c.estado === 'abierta' ? '<span class="etiqueta azul">Abierta</span>' : `${esc(c.cerrada_por || '—')} <span class="suave">${(c.cerrada_en || '').slice(11, 16)}</span>`}</td>
+          <td class="n">${fmt(c.apertura)}</td><td class="n">${fmt(c.efectivo)}</td><td class="n">${fmt(c.ingresos)}</td><td class="n">${fmt(-c.egresos)}</td>
+          <td class="n">${fmt(c.esperado)}</td><td class="n">${c.contado == null ? '—' : fmt(c.contado)}</td>
+          <td class="n ${c.diferencia == null ? '' : Math.abs(c.diferencia) < 1 ? 'ok' : 'mal'}">${c.diferencia == null ? '—' : fmt(c.diferencia)}</td><td>${esc(c.observaciones || '')}</td></tr>`).join('')
+          || '<tr><td colspan="12" class="suave">No hubo cajas en el período.</td></tr>'}
+      </table>`;
+  }
+  // Cambios, anulaciones y descuentos
+  let control = '';
+  if (hayExtra) {
+    control = `<div>
+      <div class="tabla-scroll"><h3>Cambios y devoluciones</h3>
+        <table><tr><th>Local</th><th class="n">Cambios</th><th class="n">Devoluciones</th><th class="n">Unid. devueltas</th><th class="n">Neto</th></tr>
+          ${x.cambios.map(c => `<tr><td>${esc(c.sucursal)}</td><td class="n">${c.cambios}</td><td class="n">${c.devoluciones}</td><td class="n">${c.unidades}</td><td class="n">${fmt(c.neto)}</td></tr>`).join('')
+            || '<tr><td colspan="5" class="suave">Ninguno en el período.</td></tr>'}
+        </table>
+        <p class="suave">"Neto" es la plata que se movió: negativo = se le devolvió al cliente.</p></div>
+      <div class="tabla-scroll" style="margin-top:18px"><h3>Ventas anuladas <span class="suave">· ${anuladas}</span></h3>
+        <table><tr><th>Vendedor</th>${!sid ? '<th>Local</th>' : ''}<th class="n">Anuladas</th><th class="n">Importe</th></tr>
+          ${x.anuladas.map(a => `<tr><td>${esc(a.vendedor)}</td>${!sid ? `<td>${esc(a.sucursal)}</td>` : ''}<td class="n"><b>${a.cantidad}</b></td><td class="n">${fmt(a.total)}</td></tr>`).join('')
+            || '<tr><td colspan="4" class="suave">Ninguna en el período.</td></tr>'}
+        </table>
+        <p class="suave">El detalle de cada una (quién la anuló y cuándo) está en Historial.</p></div>
+      <div class="tabla-scroll" style="margin-top:18px"><h3>Descuento por pago en efectivo</h3>
+        <table><tr><td>Ventas con descuento</td><td class="n">${x.descuentos.ventas}</td></tr>
+          <tr><td>Total descontado</td><td class="n"><b>${fmt(x.descuentos.total)}</b></td></tr>
+          <tr><td>Sobre lo vendido</td><td class="n">${pctTotal(+x.descuentos.total)}</td></tr></table></div>
+    </div>`;
+  }
+
   return `<h1>Reportes</h1>
-  ${filtroPeriodo(true, `<button type="button" class="sec" onclick="print()">Imprimir</button> <button type="button" class="sec" onclick="exportarVentas(F.desde,F.hasta,sucFiltro())">Descargar detalle (CSV)</button>`)}
-  <div class="kpis">
-    <div class="kpi"><small>Total vendido</small><b>${fmt(r.res.total)}</b></div>
-    <div class="kpi"><small>Ventas</small><b>${r.res.ventas}</b></div>
-    <div class="kpi"><small>Unidades</small><b>${r.res.unidades}</b></div>
-    <div class="kpi"><small>Ticket promedio</small><b>${fmt(r.res.ticket)}</b></div>
-    <div class="kpi"><small>% originales (unid.)</small><b>${pctOriginales(total)}</b></div>
+  <div class="panel no-imprimir">
+    <div class="cats">${ATAJOS.map(([k, t]) => { const [a, b] = rangoAtajo(k); return `<button type="button" class="${F.desde === a && F.hasta === b ? 'activa' : ''}" onclick="atajo('${k}')">${t}</button>`; }).join('')}</div>
   </div>
-  <div class="panel"><h2>Objetivos de ${mes}</h2>${tablaObjetivos(r.avance, false)}</div>
-  <div class="panel tabla-scroll"><h2>Originales y genéricos por local</h2>
-    <p class="suave">Del período elegido. El % es sobre lo clasificado; "sin definir" son productos que todavía no se marcaron como original o genérico (se arreglan en Productos). Por caja: pantalla Caja.</p>
-    <table class="clases"><tr><th>Local</th><th class="n">Originales (u.)</th><th class="n">Importe</th><th class="n">Genéricos (u.)</th><th class="n">Importe</th><th class="n">% unid. orig. / gen.</th><th class="n">% importe orig. / gen.</th><th class="n">Sin definir</th></tr>
-      ${r.clases.map(s => filaClase(esc(s.sucursal), s.clases)).join('')}
-      ${r.clases.length > 1 ? filaClase('Total', total, true) : ''}
-    </table></div>
-  <div class="panel tabla-scroll"><h2>Proyección de ${MESES[r.mes.mes]} por vendedor</h2>
+  ${filtroPeriodo(true, `<button type="button" class="sec" onclick="print()">Imprimir</button> <button type="button" class="sec" onclick="exportarVentas(F.desde,F.hasta,sucFiltro())">Descargar detalle (CSV)</button>`)}
+  <div class="panel no-imprimir"><p class="suave" style="margin:0 0 8px">Qué mostrar (tocá para ocultar o mostrar; se recuerda en esta compu) ·
+      <a href="javascript:verTodas(true)">todo</a> · <a href="javascript:verTodas(false)">nada</a></p>
+    <div class="cats">${SECCIONES.map(([k, t]) => `<button type="button" data-chip="${k}" class="${R.ocultas.includes(k) ? '' : 'activa'}" onclick="verSeccion('${k}')">${t}</button>`).join('')}</div>
+  </div>
+  <p class="suave">Del ${ddmm(F.desde)}/${F.desde.slice(0, 4)} al ${ddmm(F.hasta)}/${F.hasta.slice(0, 4)} · ${sid ? esc(sucNombre(sid)) : 'todas las sucursales'}${ant ? ` · se compara con el ${ddmm(ant.desde)} al ${ddmm(ant.hasta)}` : ''}</p>
+  ${hayExtra ? '' : falta}
+  <div class="kpis">
+    <div class="kpi"><small>Total vendido</small><b>${fmt(r.res.total)}</b>${ant ? variacion(r.res.total, ant.total) : ''}</div>
+    <div class="kpi"><small>Ventas (tickets)</small><b>${r.res.ventas}</b>${ant ? variacion(r.res.ventas, ant.ventas) : ''}</div>
+    <div class="kpi"><small>Unidades</small><b>${r.res.unidades}</b>${ant ? variacion(r.res.unidades, ant.unidades) : ''}</div>
+    <div class="kpi"><small>Ticket promedio</small><b>${fmt(r.res.ticket)}</b>${ant ? variacion(r.res.ticket, ant.ticket) : ''}</div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><small>% originales (unid.)</small><b>${pctOriginales(total)}</b></div>
+    ${hayExtra ? `<div class="kpi"><small>Promedio por día</small><b>${fmt(totalPeriodo / x.largo)}</b></div>
+    <div class="kpi"><small>Descuento en efectivo</small><b>${fmt(x.descuentos.total)}</b></div>
+    <div class="kpi"><small>Ventas anuladas</small><b class="${anuladas ? 'alerta' : ''}">${anuladas}</b></div>` : ''}
+  </div>
+  ${sec('objetivos', `<div class="panel"><h2>Objetivos de ${mes}</h2>${tablaObjetivos(r.avance, false)}</div>`)}
+  ${sec('dias', `<div class="panel tabla-scroll"><h2>Día por día</h2>${hayExtra ? dias : falta}</div>`)}
+  ${sec('horarios', `<div class="panel tabla-scroll"><h2>Días y horarios</h2><p class="suave">Para ver qué días y en qué horas se vende más (por ejemplo, para armar los turnos).</p>${hayExtra ? horarios : falta}</div>`)}
+  ${sec('vendedores', `<div class="panel tabla-scroll"><h2>Tickets por vendedor</h2>
+    ${hayExtra ? tickets : `<table><tr><th>Vendedor</th>${!sid ? '<th>Sucursal</th>' : ''}<th class="n">Tickets</th><th class="n">Unid.</th><th class="n">Total</th><th class="n">Ticket prom.</th><th class="n">% del total</th></tr>
+      ${r.vendedores.map(v => `<tr><td>${esc(v.vendedor)}</td>${!sid ? `<td>${esc(v.sucursal)}</td>` : ''}<td class="n">${v.ventas}</td><td class="n">${v.unidades}</td><td class="n">${fmt(v.total)}</td>
+        <td class="n">${ticket(+v.total, +v.ventas)}</td><td class="n">${pctTotal(+v.total)}</td></tr>`).join('') || '<tr><td class="suave">Sin datos.</td></tr>'}
+    </table>`}
+    <div class="tabla-scroll" style="margin-top:18px">${r.sucursales.length ? `<h3>Tickets por local</h3><table><tr><th>Local</th><th class="n">Tickets</th><th class="n">Total</th><th class="n">Ticket prom.</th><th class="n">% del total</th></tr>
+        ${r.sucursales.map(s => `<tr><td>${esc(s.sucursal)}</td><td class="n">${s.ventas}</td><td class="n">${fmt(s.total)}</td><td class="n">${ticket(+s.total, +s.ventas)}</td><td class="n">${pctTotal(+s.total)}</td></tr>`).join('')}</table>`
+      : '<h3>Tickets por local</h3><p class="suave">Elegí "Todas las sucursales" para comparar los locales.</p>'}</div>
+    <h3 style="margin-top:18px">Proyección de ${MESES[r.mes.mes]} por vendedor</h3>
     <p class="suave">Lo vendido en el mes (${r.mes.pasados} de ${r.mes.dias} días) y a cuánto llegaría cada uno al ritmo actual.${sid ? '' : ' "% del local" es su parte en la proyección de su local.'}</p>
     <table><tr><th>Vendedor</th>${!sid ? '<th>Local</th>' : ''}<th class="n">Vendido en el mes</th><th class="n">Proyección a fin de mes</th><th class="n">% del local</th></tr>
       ${r.proy_vendedores.map(v => `<tr><td>${esc(v.vendedor)}</td>${!sid ? `<td>${esc(v.sucursal)}</td>` : ''}<td class="n">${fmt(v.vendido)}</td><td class="n"><b>${fmt(v.proyeccion)}</b></td><td class="n">${pct(v.pct_local)}</td></tr>`).join('')
         || '<tr><td colspan="5" class="suave">Sin ventas en el mes.</td></tr>'}
-    </table></div>
-  <div class="grilla">
-    <div class="panel tabla-scroll"><h2>Ventas por vendedor</h2>
-      <table><tr><th>Vendedor</th>${!sid ? '<th>Sucursal</th>' : ''}<th class="n">Ventas</th><th class="n">Unid.</th><th class="n">Total</th></tr>
-        ${r.vendedores.map(v => `<tr><td>${esc(v.vendedor)}</td>${!sid ? `<td>${esc(v.sucursal)}</td>` : ''}<td class="n">${v.ventas}</td><td class="n">${v.unidades}</td><td class="n">${fmt(v.total)}</td></tr>`).join('') || '<tr><td class="suave">Sin datos.</td></tr>'}
-      </table></div>
-    <div class="panel">
-      ${r.sucursales.length ? `<h2>Por sucursal</h2><table>${r.sucursales.map(s => `<tr><td>${esc(s.sucursal)}</td><td class="n">${s.ventas}</td><td class="n">${fmt(s.total)}</td></tr>`).join('')}</table>`
-        : '<h2>Por sucursal</h2><p class="suave">Elegí "Todas las sucursales" para comparar los locales.</p>'}
-    </div>
-  </div>
-  ${panelMedios(r, sid)}
-  <div class="panel tabla-scroll"><h2>Top 10 productos (unidades)</h2>
+    </table></div>`)}
+  ${sec('categorias', `<div class="panel tabla-scroll"><h2>Categorías</h2>${hayExtra ? categorias : falta}</div>`)}
+  ${sec('productos', `<div class="panel tabla-scroll"><h2>Top 10 productos (unidades)</h2>
     <table><tr><th>#</th><th>Producto</th><th class="n">Unidades</th><th class="n">Importe</th><th>Vendedores (unidades)</th></tr>
       ${r.top.map((t, i) => `<tr><td>${i + 1}</td><td>${esc(t.descripcion)}</td><td class="n"><b>${t.unidades}</b></td><td class="n">${fmt(t.importe)}</td>
         <td>${t.vendedores.map(v => `${esc(v.vendedor)}: ${v.unidades}`).join(' · ')}</td></tr>`).join('') || '<tr><td colspan="5" class="suave">Sin datos.</td></tr>'}
-    </table></div>
-  <div class="panel tabla-scroll"><h2>Fundas por marca y modelo del celular <span class="suave">(incluye flip covers) · total ${totalFundas}</span></h2>
+    </table>
+    <h3 style="margin-top:18px">Productos originales vendidos</h3>
+    <table>${r.originales.map(o => `<tr><td>${esc(o.descripcion)}</td><td class="n">${o.unidades} u.</td><td class="n">${fmt(o.importe)}</td></tr>`).join('') || '<tr><td class="suave">Ninguno (marcá los productos como "Original" en Productos).</td></tr>'}</table>
+  </div>`)}
+  ${sec('fundas', `<div class="panel tabla-scroll"><h2>Fundas por marca y modelo del celular <span class="suave">(incluye flip covers) · total ${totalFundas}</span></h2>
     <p class="suave">Según la marca y el modelo que carga el vendedor en cada venta.</p>
     ${fundas.map(g => `<h3>${g.marca} · ${g.total} unidades</h3>
       <table><tr><th>Modelo</th>${g.marca === 'Otras marcas' ? '<th>Marca</th>' : ''}<th class="n">Fundas</th><th class="n">Flip cover</th><th class="n">Total</th></tr>
         ${g.modelos.map(m => `<tr><td>${esc(m.modelo || '(sin modelo)')}</td>${g.marca === 'Otras marcas' ? `<td>${esc(m.marca)}</td>` : ''}<td class="n">${m.fundas}</td><td class="n">${m.flip}</td><td class="n"><b>${m.total}</b></td></tr>`).join('')}
       </table>`).join('') || '<p class="suave">No se vendieron fundas en el período.</p>'}
-  </div>
-  ${r.vidrios ? `<div class="panel tabla-scroll"><h2>Protectores de pantalla por marca y modelo <span class="suave">(vidrio templado e hydrogel) · total ${r.vidrios.reduce((s, x) => s + +x.total, 0)}</span></h2>
+    ${r.vidrios ? `<h2 style="margin-top:22px">Protectores de pantalla por marca y modelo <span class="suave">(vidrio templado e hydrogel) · total ${r.vidrios.reduce((s, v) => s + +v.total, 0)}</span></h2>
     <table><tr><th>Marca</th><th>Modelo</th><th class="n">Unidades</th></tr>
-      ${r.vidrios.map(x => `<tr><td>${esc(x.marca)}</td><td>${esc(x.modelo || '(sin modelo)')}</td><td class="n"><b>${x.total}</b></td></tr>`).join('') || '<tr><td colspan="3" class="suave">No se vendieron protectores en el período.</td></tr>'}
-    </table></div>` : ''}
-  <div class="panel tabla-scroll"><h2>Diferencias por devolución <span class="suave">· ${r.creditos.length}</span></h2>
+      ${r.vidrios.map(v => `<tr><td>${esc(v.marca)}</td><td>${esc(v.modelo || '(sin modelo)')}</td><td class="n"><b>${v.total}</b></td></tr>`).join('') || '<tr><td colspan="3" class="suave">No se vendieron protectores en el período.</td></tr>'}
+    </table>` : ''}
+  </div>`)}
+  ${sec('clases', `<div class="panel tabla-scroll"><h2>Originales y genéricos por local</h2>
+    <p class="suave">Del período elegido. El % es sobre lo clasificado; "sin definir" son productos que todavía no se marcaron como original o genérico (se arreglan en Productos). Por caja: pantalla Caja.</p>
+    <table class="clases"><tr><th>Local</th><th class="n">Originales (u.)</th><th class="n">Importe</th><th class="n">Genéricos (u.)</th><th class="n">Importe</th><th class="n">% unid. orig. / gen.</th><th class="n">% importe orig. / gen.</th><th class="n">Sin definir</th></tr>
+      ${r.clases.map(s => filaClase(esc(s.sucursal), s.clases)).join('')}
+      ${r.clases.length > 1 ? filaClase('Total', total, true) : ''}
+    </table></div>`)}
+  ${sec('medios', panelMedios(r, sid))}
+  ${sec('caja', `<div class="panel tabla-scroll"><h2>Caja: ingresos y egresos de efectivo</h2>${hayExtra ? caja : falta}</div>`)}
+  ${sec('clientes', `<div class="panel tabla-scroll"><h2>Clientes</h2>${hayExtra ? clientes : falta}</div>`)}
+  ${sec('control', `<div class="panel tabla-scroll"><h2>Cambios, anulaciones y descuentos</h2>${hayExtra ? control : falta}
+    <h3 style="margin-top:18px">Diferencias por devolución <span class="suave">· ${r.creditos.length}</span></h3>
     <p class="suave">Ventas donde se descontó algo que trajo el cliente sin venta previa en el sistema, con el motivo que escribió el vendedor.</p>
     <table><tr><th>Venta</th><th>Fecha</th>${!sid ? '<th>Local</th>' : ''}<th>Vendedor</th><th class="n">Descontado</th><th>Motivo</th></tr>
       ${r.creditos.map(c => `<tr><td><a href="#ticket/${c.venta}">#${c.venta}</a></td><td>${fc(c.fecha)}</td>${!sid ? `<td>${esc(c.sucursal)}</td>` : ''}<td>${esc(c.vendedor)}</td><td class="n">${fmt(c.monto)}</td><td>${esc(c.observaciones)}</td></tr>`).join('')
         || '<tr><td colspan="6" class="suave">Ninguna en el período.</td></tr>'}
-    </table></div>
-  <div class="panel tabla-scroll"><h2>Productos originales vendidos</h2>
-    <table>${r.originales.map(o => `<tr><td>${esc(o.descripcion)}</td><td class="n">${o.unidades} u.</td><td class="n">${fmt(o.importe)}</td></tr>`).join('') || '<tr><td class="suave">Ninguno (marcá los productos como "Original" en Productos).</td></tr>'}</table>
-  </div>`;
+    </table></div>`)}`;
 }
 
 // ---------------------------------------------------------------- configuración (sólo dueño y superadmin)
@@ -1494,7 +1774,7 @@ async function vConfig() {
     <p class="suave"><b>Rotación:</b> marcá en "Otros locales" dónde más puede trabajar cada uno. Al entrar, elige el local arriba a la derecha.</p>
     <p class="suave"><b>Claves:</b> cada uno entra con su usuario y su clave (un PIN de 4 números, para todos los roles).
       Las claves las ponen sólo el dueño y los superadministradores; al dueño y a los superadministradores, sólo un superadministrador.
-      La primera vez que alguien entra con la clave que le pusieron, el sistema le pide que ponga una propia.</p>
+      La primera vez que alguien entra con la clave que le pusieron, el sistema le pide que ponga una propia, <b>salvo a los vendedores</b>: pueden seguir con la que les dieron (por ejemplo 1234).</p>
     <table><tr><th>Nombre</th><th>Entra como</th><th>Rol</th><th>Local principal</th><th>Otros locales</th><th></th></tr>
       ${d.usuarios.map(u => C.editar === u.id ? `<tr><td colspan="6">
           <form class="fila" onsubmit="event.preventDefault();guardarConfig('usuario',datosUsuario(this,${u.id}))">
