@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ventas · TechPoint v14</title>
+<title>Ventas · TechPoint v15</title>
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Crect x='12' y='40' width='24' height='7' fill='%23ff1a8c'/%3E%3Crect x='42' y='36' width='11' height='11' fill='%232b3fe0'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -111,7 +111,7 @@ button.chico, .boton.chico { padding: 3px 9px; font-size: 13px; }
 .modelo-cel { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
 .modelo-cel select, .modelo-cel input { padding: 4px 6px; font-size: 13px; }
 .modelo-cel input { flex: 1; min-width: 110px; }
-.modelo-cel .falta, .precio.falta { border-color: var(--mal); }
+.modelo-cel .falta, .precio.falta, select.falta { border-color: var(--mal); }
 td.acciones { white-space: nowrap; }
 input[readonly] { opacity: .65; cursor: not-allowed; }
 details summary { cursor: pointer; }
@@ -227,13 +227,15 @@ select.cat-fila { padding: 3px 6px; font-size: 13px; max-width: 150px; }
    Todo lo que mueve plata o stock lo hace la base (todo o nada).
    Por ahora sin pantalla de login: se elige "con qué usuario entrar" arriba a la derecha.
    ===================================================================== */
-const VERSION = 'v14';
+const VERSION = 'v15';
 // Base propia del dueño (Supabase, organización TechPoint) desde el 24/10/2026. Antes: orbe-clientes de José.
 const NUBE = { url: 'https://ihmnfcmkvckhueowkzet.supabase.co', key: 'sb_publishable_fltCybLk39k92dPRant28A_FT8pGJRL' };
 const MEDIOS = ['Efectivo', 'Débito', 'Crédito', 'Transferencia', 'Mercado Pago'];
 // Mercado Pago se cobra con una de estas opciones (008): se guarda como "Mercado Pago QR", etc.
 const OPCIONES_MP = ['QR', '3 cuotas', '6 cuotas'];
-const MEDIOS_PAGO = [...MEDIOS.filter(m => m !== 'Mercado Pago'), ...OPCIONES_MP.map(o => 'Mercado Pago ' + o)];
+// Crédito en 1, 2, 3 o 6 pagos (014): se guarda como "Crédito 3 pagos", etc. Sin recargo.
+const OPCIONES_CREDITO = ['1 pago', '2 pagos', '3 pagos', '6 pagos'];
+const MEDIOS_PAGO = ['Efectivo', 'Débito', ...OPCIONES_CREDITO.map(o => 'Crédito ' + o), 'Transferencia', ...OPCIONES_MP.map(o => 'Mercado Pago ' + o)];
 const CATEGORIAS = ['Funda', 'Flip cover', 'Vidrio templado', 'Cargador', 'Cable', 'Auricular', 'Parlante', 'Soporte',
                     'Adaptador', 'Power bank', 'Memoria', 'Smartwatch', 'Tablet', 'Computación', 'Gamer', 'Otro'];
 // Las de la lista fija más las que creó el dueño (texto libre), con "Otro" al final
@@ -293,6 +295,12 @@ async function rpc(nombre, args) {
   return data;
 }
 
+// Cuenta del local (014): la usan varios vendedores; al vender hay que elegir quién vende
+const esLocal = () => !!(ST.ini.yo && ST.ini.yo.es_local);
+// Quiénes pueden figurar como vendedor de una venta del local: asignados a ese local (rotación incluida), sin cuentas de local.
+// Con «tambienGlobales» suma a los supervisores (los elige el encargado o el dueño).
+const vendedoresDe = (suc, tambienGlobales) => ST.ini.usuarios.filter(x => !x.es_local && NIVEL[x.rol] < 4
+  && ((tambienGlobales && NIVEL[x.rol] >= 3) || (x.locales || [x.sucursal_id]).includes(suc)));
 function usuario() { return ST.ini && ST.ini.yo ? (ST.ini.usuarios || []).find(u => u.id === ST.uid) || null : null; }
 function es(rol) { const u = usuario(); return !!u && NIVEL[u.rol] >= NIVEL[rol]; }
 const global = (u = usuario()) => !!u && NIVEL[u.rol] >= 3;          // trabaja en todos los locales
@@ -443,6 +451,12 @@ async function cambiarMiClave(f) {
   } catch (e) { avisar(e.message, true); render(); }
 }
 // Poner la clave de otro (dueño y superadmin; al dueño y a los superadmin, sólo un superadmin)
+const cuentaLocal = id => !!(ST.ini.usuarios.find(x => x.id === id) || {}).es_local;
+async function marcarLocal(id, si) {
+  try { await rpc('tp_usuario_local', { ...U(), p_id: id, p_es_local: si }); await cargarInicial(); avisar(si ? 'Listo: es cuenta del local. Al vender va a tener que elegir quién vende.' : 'Listo: ya no es cuenta del local.'); }
+  catch (e) { avisar(e.message, true); }
+  render();
+}
 async function claveDe(id, nombre, rol) {
   const c = prompt(`PIN nuevo (4 números) para ${nombre}.\n${rol === 'vendedor' ? 'Lo puede seguir usando (no se le pide cambiarlo).' : 'Al entrar le va a pedir que ponga una propia.'}`);
   if (!c) return;
@@ -623,7 +637,9 @@ async function vVender() {
   V.catalogo = cat; V.carrito = []; V.resultados = []; V.sel = 0; V.pagos = null;
   const u = usuario(), DESC = +ST.ini.descuento;
   // Pueden figurar como vendedor: los que trabajan en este local (rotación incluida) y los supervisores
-  const vendedores = ST.ini.usuarios.filter(x => x.id !== u.id && NIVEL[x.rol] < 4 && (NIVEL[x.rol] >= 3 || localesDe(x).includes(suc)));
+  const vendedores = vendedoresDe(suc, !esLocal()).filter(x => x.id !== u.id);
+  if (esLocal() && !vendedores.length) return `<div class="aviso error">No hay vendedores asignados a ${esc(sucNombre(suc))}, así que no se puede vender desde la cuenta del local.
+    Pedile al dueño que los cargue en Config → Usuarios (con este local como principal o en "Otros locales").</div>`;
   despues(() => {
     $('buscar').addEventListener('input', () => { clearTimeout(V.timer); V.timer = setTimeout(buscarVenta, 120); });
     $('buscar').addEventListener('keydown', e => {
@@ -657,12 +673,19 @@ async function vVender() {
     </div>
     <div class="panel">
       <h2>Cobro</h2>
-      ${es('encargado')
+      ${esLocal()
+        ? `<label class="suave">¿Quién vende? <b class="mal">(obligatorio)</b></label><select id="vendedor" class="falta" style="width:100%" required
+            onchange="this.classList.toggle('falta',!this.value)"><option value="">— Elegí quién vende —</option>
+            ${vendedores.map(v => `<option value="${v.id}">${esc(v.nombre)}</option>`).join('')}</select>`
+        : es('encargado')
         ? `<label class="suave">Vende</label><select id="vendedor" style="width:100%"><option value="${u.id}">${esc(u.nombre)} (yo)</option>
             ${vendedores.map(v => `<option value="${v.id}">${esc(v.nombre)}</option>`).join('')}</select>`
         : `<p class="suave">Vende: <b>${esc(u.nombre)}</b></p><input type="hidden" id="vendedor" value="${u.id}">`}
       <div class="medios" id="medios">
-        ${MEDIOS.map((m, i) => `<label><input type="radio" name="medio" value="${m}" ${i === 0 ? 'checked' : ''} onchange="$('mp-opciones').hidden=this.value!=='Mercado Pago';pintarTotal()">${m}${m === 'Efectivo' && DESC ? ` <small>−${Math.round(DESC)}%</small>` : ''}</label>`).join('')}
+        ${MEDIOS.map((m, i) => `<label><input type="radio" name="medio" value="${m}" ${i === 0 ? 'checked' : ''} onchange="$('mp-opciones').hidden=this.value!=='Mercado Pago';$('cr-opciones').hidden=this.value!=='Crédito';pintarTotal()">${m}${m === 'Efectivo' && DESC ? ` <small>−${Math.round(DESC)}%</small>` : ''}</label>`).join('')}
+      </div>
+      <div class="medios mp" id="cr-opciones" role="group" aria-label="Cantidad de pagos con crédito" hidden>
+        ${OPCIONES_CREDITO.map((o, i) => `<label><input type="radio" name="cr" value="${o}" ${i === 0 ? 'checked' : ''}>${o}</label>`).join('')}
       </div>
       <div class="medios mp" id="mp-opciones" role="group" aria-label="Opción de Mercado Pago" hidden>
         ${OPCIONES_MP.map((o, i) => `<label><input type="radio" name="mp" value="${o}" ${i === 0 ? 'checked' : ''}>${o}</label>`).join('')}
@@ -776,6 +799,7 @@ const creditos = () => V.carrito.filter(i => i.es_credito).reduce((s, i) => s + 
 const subtotal = () => productosCarrito().reduce((s, i) => s + i.cantidad * i.precio, 0) - creditos();
 const medioUnico = () => {
   const m = document.querySelector('input[name=medio]:checked').value;
+  if (m === 'Crédito') return 'Crédito ' + document.querySelector('input[name=cr]:checked').value;
   return m === 'Mercado Pago' ? 'Mercado Pago ' + document.querySelector('input[name=mp]:checked').value : m;
 };
 const conDescuento = () => !V.pagos && medioUnico() === 'Efectivo' && +ST.ini.descuento > 0;
@@ -794,9 +818,9 @@ function pintarTotal() {
 }
 function dividir(e) {
   if (e) e.preventDefault();
-  if (V.pagos) { V.pagos = null; $('mixto').hidden = true; $('medios').hidden = false; $('mp-opciones').hidden = !medioUnico().startsWith('Mercado Pago'); $('dividir').textContent = 'Dividir el pago en varios medios'; pintarTotal(); return; }
+  if (V.pagos) { V.pagos = null; $('mixto').hidden = true; $('medios').hidden = false; $('mp-opciones').hidden = !medioUnico().startsWith('Mercado Pago'); $('cr-opciones').hidden = !medioUnico().startsWith('Crédito'); $('dividir').textContent = 'Dividir el pago en varios medios'; pintarTotal(); return; }
   V.pagos = [{ medio: 'Efectivo', monto: '' }, { medio: 'Débito', monto: '' }];
-  $('mixto').hidden = false; $('medios').hidden = true; $('mp-opciones').hidden = true; $('dividir').textContent = 'Volver a un solo medio';
+  $('mixto').hidden = false; $('medios').hidden = true; $('mp-opciones').hidden = true; $('cr-opciones').hidden = true; $('dividir').textContent = 'Volver a un solo medio';
   pintarPagos();
 }
 function otroPago() { V.pagos.push({ medio: MEDIOS_PAGO.find(m => !V.pagos.some(p => p.medio === m)) || MEDIOS_PAGO[0], monto: '' }); pintarPagos(); }
@@ -833,6 +857,7 @@ async function cobrar() {
     $('estado').innerHTML = '<span class="mal">Explicá en Observaciones por qué hay una diferencia por devolución (mínimo 10 letras).</span>'; $('obs').focus(); return;
   }
   if (totalFinal() < 0) { $('estado').innerHTML = '<span class="mal">La diferencia por devolución es mayor que lo que se lleva el cliente.</span>'; return; }
+  if (esLocal() && !$('vendedor').value) { $('estado').innerHTML = '<span class="mal">Elegí quién hace la venta.</span>'; $('vendedor').focus(); return; }
   $('cobrar').disabled = true; $('estado').textContent = 'Guardando…';
   try {
     const suc = sucActual();
@@ -842,6 +867,7 @@ async function cobrar() {
       medio_pago: medioUnico(), pagos: V.pagos ? V.pagos.map(p => ({ medio: p.medio, monto: +p.monto || 0 })) : null } });
     $('estado').innerHTML = `<span class="ok">Venta #${d.venta_id} registrada: ${fmt(d.total)}</span> · <a href="#ticket/${d.venta_id}">Ticket / enviar comprobante</a>`;
     V.carrito = []; $('cliente').value = ''; $('tel').value = ''; $('obs').value = ''; $('cliente-info').innerHTML = '';
+    if (esLocal()) { $('vendedor').value = ''; $('vendedor').classList.add('falta'); }      // en la próxima venta se vuelve a elegir
     if (V.pagos) dividir();
     pintarCarrito(); $('buscar').focus();
   } catch (e) {
@@ -869,14 +895,16 @@ async function vVentas() {
   const ventas = await rpc('tp_ventas', { ...U(), p_desde: F.desde, p_hasta: F.hasta, p_suc: sucFiltro() });
   const validas = ventas.filter(v => !v.anulada);
   const total = validas.reduce((s, v) => s + +v.total, 0);
-  return `<h1>${es('encargado') ? 'Ventas' : 'Mis ventas'}</h1>
+  return `<h1>${es('encargado') ? 'Ventas' : esLocal() ? 'Ventas del local' : 'Mis ventas'}</h1>
     ${filtroPeriodo(true, es('encargado') ? `<button type="button" class="sec" onclick="exportarVentas(F.desde,F.hasta,sucFiltro())">Descargar Excel (CSV)</button>` : '')}
     <div class="panel tabla-scroll">
       <p><b>${validas.filter(v => v.tipo === 'venta').length}</b> ventas · total <b>${fmt(total)}</b> <span class="suave">(ya descontados cambios y devoluciones)</span></p>
       <table>
         <tr><th>#</th><th>Fecha</th><th>Sucursal</th><th>Vendedor</th><th>Detalle</th><th>Pago</th><th class="n">Total</th><th></th></tr>
         ${ventas.map(v => `<tr class="${v.anulada ? 'anulada' : ''}">
-          <td>${v.id}</td><td>${fc(v.fecha)}</td><td>${esc(v.sucursal)}</td><td>${esc(v.vendedor || '')}</td>
+          <td>${v.id}</td><td>${fc(v.fecha)}</td><td>${esc(v.sucursal)}</td>
+          <td id="vend-${v.id}">${esc(v.vendedor || '')}${!v.anulada && es('encargado') && v.sucursal_id ? ` <button class="sec chico" title="Cambiar el vendedor" aria-label="Cambiar el vendedor"
+            onclick="elegirVendedor(${v.id},${v.sucursal_id},${v.vendedor_id || 'null'})">✎</button>` : ''}</td>
           <td>${v.tipo !== 'venta' ? `<span class="etiqueta rosa">${v.tipo === 'cambio' ? 'Cambio' : 'Devolución'} de #${v.venta_origen_id}</span> ` : ''}${esc(v.detalle || '')}
             ${v.credito ? `<br><span class="etiqueta sin-stock" title="${esc(v.observaciones || '')}">Dif. por devolución</span> <span class="suave">${esc(v.observaciones || '')}</span>` : ''}
             ${v.cliente_id ? `<br><a class="suave" href="#cliente/${v.cliente_id}">${esc(v.cliente || 'Cliente')} · ${esc(telVisible(v.telefono))}</a>` : v.cliente ? `<br><span class="suave">${esc(v.cliente)}</span>` : ''}</td>
@@ -890,6 +918,20 @@ async function vVentas() {
           </td></tr>`).join('') || '<tr><td colspan="8" class="suave">No hay ventas en este período.</td></tr>'}
       </table>
     </div>`;
+}
+
+// Cambiar el vendedor de una venta ya hecha (014): encargado (su local), supervisor, dueño y superadmin
+function elegirVendedor(id, suc, actual) {
+  const lista = vendedoresDe(suc, true);
+  if (actual && !lista.some(x => x.id === actual)) lista.unshift({ id: actual, nombre: (ST.ini.usuarios.find(x => x.id === actual) || {}).nombre || '(otro)' });
+  $('vend-' + id).innerHTML = `<select id="vsel-${id}" aria-label="Vendedor">${lista.map(x => `<option value="${x.id}" ${x.id === actual ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select>
+    <button class="chico" onclick="cambiarVendedor(${id})">Guardar</button> <button class="sec chico" onclick="render()">✕</button>`;
+  $('vsel-' + id).focus();
+}
+async function cambiarVendedor(id) {
+  try { const r = await rpc('tp_venta_vendedor', { ...U(), p_id: id, p_vendedor: +$('vsel-' + id).value }); avisar(`Venta #${id}: ahora figura ${r.vendedor || 'el mismo vendedor'}.`); }
+  catch (e) { avisar(e.message, true); }
+  render();
 }
 
 async function anular(id) {
@@ -1221,7 +1263,8 @@ async function vProductos() {
     ${duenio ? `<p class="suave" style="margin-top:0"><span class="tilde">✓</span>= original. Para corregir uno, tocá su etiqueta Original / Genérico y cambia al instante.</p>
     <p class="fila" style="align-items:center;margin-top:0"><span class="suave">O marcá varios y elegí:</span>
       <button type="button" class="sec chico" onclick="marcarClase('original')">Son originales</button>
-      <button type="button" class="sec chico" onclick="marcarClase('generico')">Son genéricos</button></p>
+      <button type="button" class="sec chico" onclick="marcarClase('generico')">Son genéricos</button>
+      <button type="button" class="sec chico peligro" onclick="bajaMarcados()">Dar de baja los marcados</button></p>
     <form class="fila" style="align-items:flex-end;margin:0 0 12px" onsubmit="event.preventDefault();cambiarPrecios(this)">
       <span class="suave" style="align-self:center">Cambiar el precio de los marcados:</span>
       <label>Qué hacer<select name="sentido"><option value="1">Subir</option><option value="-1">Bajar</option></select></label>
@@ -1297,6 +1340,15 @@ async function cambiarPrecios(f) {
     const r = await rpc('tp_productos_precio', { ...U(), p_ids: elegidos.map(p => p.id), p_modo: modo, p_valor: valor, p_redondeo: paso });
     avisar(`Precio actualizado en ${r.n} productos (${valor > 0 ? '+' : '−'}${cuanto}).`);
   } catch (e) { avisar(e.message, true); }
+  render();
+}
+// Baja masiva (014): no se borran, quedan dados de baja (no aparecen para vender) y se conserva el historial
+async function bajaMarcados() {
+  const ids = [...P.marcados].filter(id => (P.filas.find(p => p.id === id) || {}).codigo !== COD_DIFERENCIA);
+  if (!ids.length) return alert('Marcá al menos un producto.');
+  if (!confirm(`¿Dar de baja ${ids.length} producto${ids.length === 1 ? '' : 's'}?\nDejan de aparecer para vender. Las ventas que ya tienen no se tocan.`)) return;
+  try { const r = await rpc('tp_productos_baja', { ...U(), p_ids: ids }); avisar(`${r.n} producto${r.n === 1 ? '' : 's'} dado${r.n === 1 ? '' : 's'} de baja.`); }
+  catch (e) { avisar(e.message, true); }
   render();
 }
 async function marcarClase(clase) {
@@ -1406,22 +1458,26 @@ async function bajaProducto(id) {
 
 // ---------------------------------------------------------------- reportes
 // Medios de pago: total con %, Mercado Pago abierto en QR / cuotas y, con todos los locales, cada medio por local
-const ORDEN_MEDIOS = ['Efectivo', 'Débito', 'Crédito', 'Transferencia', ...OPCIONES_MP.map(o => 'Mercado Pago ' + o), 'Mercado Pago'];
+const ORDEN_MEDIOS = ['Efectivo', 'Débito', ...OPCIONES_CREDITO.map(o => 'Crédito ' + o), 'Crédito', 'Transferencia', ...OPCIONES_MP.map(o => 'Mercado Pago ' + o), 'Mercado Pago'];
 const ordenMedio = m => (ORDEN_MEDIOS.indexOf(m) + 1) || 99;
-const esMP = m => m.startsWith('Mercado Pago');
 function panelMedios(r, sid) {
   const medios = [...r.medios].sort((a, b) => ordenMedio(a.medio) - ordenMedio(b.medio));
   const total = medios.reduce((s, m) => s + +m.total, 0);
   const pctDe = x => total ? `${Math.round(x / total * 100)} %` : '—';
-  const mp = medios.filter(m => esMP(m.medio));
-  const mpTotal = mp.reduce((s, m) => s + +m.total, 0), mpVentas = mp.reduce((s, m) => s + +m.ventas, 0);
-  const fila = (m, sub) => `<tr><td>${sub ? `<span class="suave">↳</span> ${esc(m.medio.replace('Mercado Pago', '').trim() || 'sin detalle (ventas anteriores)')}` : esc(m.medio)}</td>
+  // Crédito (1, 2, 3, 6 pagos) y Mercado Pago (QR, 3, 6 cuotas): un renglón con el total y abajo cada opción
+  const grupoDe = m => ['Crédito', 'Mercado Pago'].find(g => m === g || m.startsWith(g + ' '));
+  const fila = (m, sub) => `<tr><td>${sub ? `<span class="suave">↳</span> ${esc(m.medio.replace(sub, '').trim() || 'sin detalle (ventas anteriores)')}` : esc(m.medio)}</td>
     <td class="n">${m.ventas}</td><td class="n">${fmt(m.total)}</td><td class="n">${pctDe(+m.total)}</td></tr>`;
   const filas = [];
   medios.forEach(m => {
-    if (!esMP(m.medio)) return filas.push(fila(m));
-    if (m === mp[0]) filas.push(`<tr><td><b>Mercado Pago</b></td><td class="n">${mpVentas}</td><td class="n"><b>${fmt(mpTotal)}</b></td><td class="n"><b>${pctDe(mpTotal)}</b></td></tr>`);
-    filas.push(fila(m, true));
+    const g = grupoDe(m.medio);
+    if (!g) return filas.push(fila(m));
+    const del = medios.filter(x => grupoDe(x.medio) === g);
+    if (m === del[0]) {
+      const t = del.reduce((s, x) => s + +x.total, 0), n = del.reduce((s, x) => s + +x.ventas, 0);
+      filas.push(`<tr><td><b>${g}</b></td><td class="n">${n}</td><td class="n"><b>${fmt(t)}</b></td><td class="n"><b>${pctDe(t)}</b></td></tr>`);
+    }
+    filas.push(fila(m, g));
   });
   // Por local: una columna por medio que tuvo movimiento
   const porSuc = !sid && r.medios_suc ? r.medios_suc : [];
@@ -1775,6 +1831,8 @@ async function vConfig() {
     <p class="suave"><b>Claves:</b> cada uno entra con su usuario y su clave (un PIN de 4 números, para todos los roles).
       Las claves las ponen sólo el dueño y los superadministradores; al dueño y a los superadministradores, sólo un superadministrador.
       La primera vez que alguien entra con la clave que le pusieron, el sistema le pide que ponga una propia, <b>salvo a los vendedores</b>: pueden seguir con la que les dieron (por ejemplo 1234).</p>
+    <p class="suave"><b>Cuentas del local:</b> cada local tiene su usuario (belgrano, juramento, caballito, hidalgo, carabobo, mendoza, altopalermo; PIN 1234) que usan todos los que trabajan ahí.
+      Al vender tienen que elegir quién vende, entre los vendedores asignados a ese local: por eso cada vendedor tiene que estar cargado acá con su local.</p>
     <table><tr><th>Nombre</th><th>Entra como</th><th>Rol</th><th>Local principal</th><th>Otros locales</th><th></th></tr>
       ${d.usuarios.map(u => C.editar === u.id ? `<tr><td colspan="6">
           <form class="fila" onsubmit="event.preventDefault();guardarConfig('usuario',datosUsuario(this,${u.id}))">
@@ -1785,10 +1843,11 @@ async function vConfig() {
             <label style="flex-basis:100%">Otros locales donde puede trabajar (no hace falta para supervisor, dueño y superadmin)${checks(u.locales || [])}</label>
             <button>Guardar</button> <button type="button" class="sec" onclick="C.editar=null;render()">Cancelar</button>
           </form></td></tr>`
-        : `<tr><td>${esc(u.nombre)}</td><td>${u.usuario ? esc(u.usuario) : '<span class="alerta">sin usuario</span>'}</td><td>${NOMBRE_ROL[u.rol]}</td>
+        : `<tr><td>${esc(u.nombre)}</td><td>${u.usuario ? esc(u.usuario) : '<span class="alerta">sin usuario</span>'}</td><td>${NOMBRE_ROL[u.rol]}${cuentaLocal(u.id) ? ' <span class="etiqueta azul">Cuenta del local</span>' : ''}</td>
           <td>${esc(u.sucursal || 'Todos')}</td><td>${esc(localesTxt(u) || '—')}</td>
           <td class="n acciones">${puedeManejar(u) ? `<button class="sec chico" onclick="C.editar=${u.id};render()">Editar</button>
             <button class="sec chico" onclick="claveDe(${u.id},'${esc(u.nombre).replace(/'/g, '')}','${u.rol}')">PIN</button>
+            ${u.rol === 'vendedor' && u.sucursal_id ? `<button class="sec chico" title="La usan varios vendedores: al vender eligen quién vende" onclick="marcarLocal(${u.id},${!cuentaLocal(u.id)})">${cuentaLocal(u.id) ? 'Quitar cuenta del local' : 'Es cuenta del local'}</button>` : ''}
             ${u.id !== ST.uid ? `<button class="sec chico" onclick="if(confirm('¿Dar de baja a ${esc(u.nombre).replace(/'/g, '')}? Ya no va a poder entrar.'))guardarConfig('baja_usuario',{id:${u.id}})">Baja</button>` : ''}` : ''}</td></tr>`).join('')}
     </table>
     <h3>Agregar usuario</h3>
