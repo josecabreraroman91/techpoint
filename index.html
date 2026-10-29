@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ventas · TechPoint v26</title>
+<title>Ventas · TechPoint v28</title>
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Crect x='12' y='40' width='24' height='7' fill='%23ff1a8c'/%3E%3Crect x='42' y='36' width='11' height='11' fill='%232b3fe0'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -176,6 +176,87 @@ label.rapida { display: flex; flex-direction: row; gap: 8px; align-items: center
 .cats button span { opacity: .65; margin-left: 4px; }
 tr.grupo td { background: var(--panel-2); font-family: var(--display); font-weight: 600; padding-top: 10px; }
 select.cat-fila { padding: 3px 6px; font-size: 13px; max-width: 150px; }
+/* Compras y presupuestos (v28). Originales azul y genéricos rosa en todos los gráficos (validados para daltonismo sobre el fondo);
+   el presupuesto va en el mismo color, tenue, o como línea de referencia gris. Verde / amarillo / rojo sólo para el estado, siempre con texto. */
+:root { --c-orig: #7482ff; --c-gen: #ff1a8c; --c-ref: #c9c9d3; }
+.pestanas { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 20px; }
+.pestanas a { padding: 6px 12px; border: 1px solid var(--borde-2); border-radius: var(--radio); color: #c4c4cf; font-size: 14px; font-weight: 500; }
+.pestanas a:hover { border-color: #4a4a58; color: #fff; }
+.pestanas a.activa { background: var(--azul); border-color: var(--azul); color: #fff; }
+.estado { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.estado.disponible { color: var(--ok); } .estado.atencion { color: var(--alerta); } .estado.excedido, .estado.insuficiente { color: var(--mal); } .estado.sin_presupuesto { color: var(--suave); }
+.avance { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+.avance i { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+.avance i.disponible { background: var(--ok); } .avance i.atencion { background: var(--alerta); } .avance i.excedido { background: var(--mal); }
+.locales-avance { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); margin-bottom: 20px; }
+.locales-avance > .panel { margin: 0; }
+.tarjeta-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.tarjeta-titulo h2 { margin: 0; }
+.cat-avance { padding: 12px 0; border-bottom: 1px solid var(--borde); }
+.cat-titulo { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cat-titulo .estado { margin-left: auto; }
+.muestra { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--c); flex: none; margin-right: 6px; }
+.cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 10px; font-size: 11px; color: var(--suave); text-transform: uppercase; letter-spacing: .06em; }
+.cifras b { display: block; font-size: 15px; color: var(--texto); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; text-transform: none; letter-spacing: 0; }
+.cifras b.mal { color: var(--mal); }
+.total-local { padding-top: 12px; margin-top: 0; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--suave); margin: 0 0 12px; }
+.leyenda span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--c); margin-right: 6px; vertical-align: -1px; }
+.leyenda span.tenue::before { opacity: .3; }
+.leyenda span.linea::before { width: 16px; height: 0; border-radius: 0; background: none; border-top: 2px dashed var(--c); vertical-align: 3px; }
+.leyenda span.tope::before { width: 2px; height: 14px; border-radius: 0; background: var(--texto); vertical-align: -3px; }
+.bullet-grupo { display: grid; grid-template-columns: 120px 1fr; gap: 4px 14px; align-items: center; padding: 10px 0; border-top: 1px solid var(--borde); }
+.bullet-grupo:first-child { border-top: 0; }
+.bullet-grupo > a { grid-row: 1 / 3; font-weight: 600; color: var(--texto); }
+.bullet-grupo > a:hover { color: var(--azul-claro); }
+.bullet-fila { display: grid; grid-template-columns: 36px minmax(80px, 1fr) 250px; gap: 10px; align-items: center; min-height: 22px; }
+.bullet-cat { font-size: 12px; color: var(--suave); }
+.bullet-pista { position: relative; height: 16px; }
+.bullet-pista i { position: absolute; left: 0; top: 0; height: 100%; border-radius: 0 4px 4px 0; background: var(--c); }
+.bullet-pista i.pres { opacity: .3; }
+.bullet-pista i.comp { top: 4px; height: 8px; max-width: 100%; }
+.bullet-pista b.tope { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--texto); }
+.bullet-dato { font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.graf { display: block; max-width: none; }
+a[href^="#compras/factura-"] { white-space: nowrap; }
+.graf text { fill: var(--suave); font-size: 12px; font-family: var(--cuerpo); }
+.graf text.valor { fill: var(--texto); font-weight: 600; }
+.mini-barra { display: flex; gap: 2px; height: 10px; min-width: 110px; }
+.mini-barra i { display: block; height: 100%; flex: none; }
+.mini-barra i:last-of-type { border-radius: 0 4px 4px 0; }
+.mini-barra i[style^="width:0%"] { display: none; }
+.ranking-fila { display: grid; grid-template-columns: minmax(110px, 200px) 1fr 170px; gap: 12px; align-items: center; padding: 6px 0; color: var(--texto); border-bottom: 1px solid var(--borde); }
+.ranking-fila:hover { background: rgba(255, 255, 255, .02); color: #fff; }
+.ranking-fila .mini-barra { height: 14px; }
+.ranking-dato { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+th.ordenable { cursor: pointer; user-select: none; }
+th.ordenable:hover { color: #fff; }
+.renglon { display: grid; grid-template-columns: minmax(130px, 1.2fr) minmax(120px, 1fr) minmax(120px, 1fr) auto; gap: 8px; margin-bottom: 8px; }
+.carga .fila label { flex: 1; min-width: 150px; }
+.carga .fila label.ancho { flex: 2; min-width: 220px; }
+.frecuentes { margin-top: 10px; align-items: center; }
+.frecuentes button { padding: 4px 10px; }
+.repartir { border: 1px dashed var(--borde-2); border-radius: var(--radio); padding: 14px; margin: 10px 0; }
+.pie-carga { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--borde); }
+.pie-carga b { font-family: var(--display); font-size: 26px; font-weight: 500; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.pie-carga button { font-size: 16px; padding: 11px 22px; }
+table.mini th, table.mini td { padding: 5px 8px; font-size: 13px; }
+tr.anulada td.nota { text-decoration: none; }
+tr.editando td { background: var(--panel-2); }
+#tip { position: fixed; z-index: 30; pointer-events: none; background: #1b1b24; color: var(--texto); border: 1px solid var(--borde-2); border-radius: var(--radio);
+       padding: 8px 11px; font-size: 13px; line-height: 1.45; white-space: pre-line; max-width: 300px; box-shadow: 0 10px 28px rgba(0, 0, 0, .55); font-variant-numeric: tabular-nums; }
+@media (max-width: 700px) {
+  .bullet-grupo { grid-template-columns: 1fr; }
+  .bullet-grupo > a { grid-row: auto; }
+  .bullet-fila { grid-template-columns: 34px 1fr; }
+  .bullet-dato { grid-column: 2; white-space: normal; }
+  .renglon { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+  .renglon > select:first-child { grid-column: 1 / -1; }
+  .renglon > * { min-width: 0; }
+  .renglon { padding-bottom: 8px; border-bottom: 1px solid var(--borde); }
+  .ranking-fila { grid-template-columns: 1fr; gap: 4px; }
+  .ranking-dato { text-align: left; }
+}
 .menu-usuario { position: relative; }
 .menu-usuario summary { cursor: pointer; list-style: none; padding: 6px 11px; border-radius: var(--radio); background: var(--panel-2); border: 1px solid var(--borde-2); font-size: 14px; }
 .menu-usuario summary:hover { border-color: #4a4a58; }
@@ -249,7 +330,7 @@ select.cat-fila { padding: 3px 6px; font-size: 13px; max-width: 150px; }
    Todo lo que mueve plata o stock lo hace la base (todo o nada).
    Por ahora sin pantalla de login: se elige "con qué usuario entrar" arriba a la derecha.
    ===================================================================== */
-const VERSION = 'v26';
+const VERSION = 'v28';
 // Base propia del dueño (Supabase, organización TechPoint) desde el 24/10/2026. Antes: orbe-clientes de José.
 const NUBE = { url: 'https://ihmnfcmkvckhueowkzet.supabase.co', key: 'sb_publishable_fltCybLk39k92dPRant28A_FT8pGJRL' };
 const MEDIOS = ['Efectivo', 'Débito', 'Crédito', 'Transferencia', 'Mercado Pago'];
@@ -434,7 +515,14 @@ async function entrar(f) {
   try {
     const r = await rpc('tp_entrar', { p_login: f.login.value, p_clave: f.clave.value });
     if (!r.ok) { $('estado-entrar').textContent = r.error; f.clave.value = ''; f.clave.focus(); return; }
-    await cargarInicial(); ir(debeCambiar() ? '#clave' : '#inicio');
+    await cargarInicial();
+    if (debeCambiar()) return ir('#clave');
+    // Cuenta del local con la caja cerrada (023): primero se pregunta qué vendedor la abre («Ahora no» sigue al inicio)
+    if (esLocal() && sucActual()) {
+      const d = await rpc('tp_caja', { ...U(), p_suc: sucActual() }).catch(() => null);
+      if (d && !d.caja) return ir('#abrir');
+    }
+    ir('#inicio');
   } catch (e) { $('estado-entrar').textContent = e.message; }
   finally { b.disabled = false; }
 }
@@ -493,10 +581,11 @@ async function claveDe(id, nombre, rol) {
 const RUTAS = {
   inicio: { t: 'Inicio', f: vInicio }, vender: { t: 'Vender', f: vVender }, caja: { t: 'Caja', f: vCaja },
   ventas: { t: 'Ventas', f: vVentas }, ticket: { t: 'Ticket', f: vTicket }, devolucion: { t: 'Cambio o devolución', f: vDevolucion },
-  detallar: { t: 'Detallar venta', f: vDetallar },
+  detallar: { t: 'Detallar venta', f: vDetallar }, abrir: { t: 'Abrir caja', f: vAbrirCaja },
   clientes: { t: 'Clientes', f: vClientes }, cliente: { t: 'Cliente', f: vCliente },
   productos: { t: 'Productos', f: vProductos, rol: 'encargado' }, producto: { t: 'Producto', f: vProducto, rol: 'encargado' },
   reportes: { t: 'Reportes', f: vReportes, rol: 'encargado' }, ia: { t: 'Consultar con IA', f: vIa, rol: 'encargado' }, config: { t: 'Configuración', f: vConfig, rol: 'dueno' },
+  compras: { t: 'Compras', f: vCompras, rol: 'supervisor' },
   historial: { t: 'Historial', f: vHistorial, rol: 'dueno' }, clave: { t: 'Mi clave', f: vMiClave },
 };
 
@@ -511,6 +600,7 @@ function pintarBarra(ruta) {
     <nav>
       ${link('vender', 'Vender')}${link('caja', 'Caja')}${link('ventas', 'Ventas', ['ticket', 'devolucion', 'detallar'])}${link('clientes', 'Clientes', ['cliente'])}
       ${es('encargado') ? link('productos', 'Productos', ['producto']) + link('reportes', 'Reportes', ['ia']) : ''}
+      ${es('supervisor') ? link('compras', 'Compras') : ''}
       ${es('dueno') ? link('historial', 'Historial') + link('config', 'Config') : ''}
     </nav>
     <div class="sesion">
@@ -537,6 +627,7 @@ function pintarBarra(ruta) {
 
 async function render() {
   document.body.classList.remove('imprime-ticket');
+  if ($('tip')) $('tip').hidden = true;
   const n = ++ST.pintadas; ST.html = null;                                  // corta cualquier actualización automática en curso
   const [ruta, arg] = (location.hash.slice(1) || 'inicio').split('/');
   const r = RUTAS[ruta] || RUTAS.inicio;
@@ -570,7 +661,7 @@ function pintar(r, html, aviso) {
 // Las pantallas de consulta se vuelven a pedir cada 30 s (y al volver a la pestaña), así se ve lo que vende otro local.
 // Sólo se repinta si algo cambió y nunca mientras alguien está escribiendo o eligiendo algo en la pantalla.
 // No renueva la sesión (eso lo hace tp_ping al usar la pantalla), así que una PC olvidada igual vence a las 12 h.
-const SE_ACTUALIZAN = ['inicio', 'ventas', 'caja', 'reportes', 'historial'];   // ninguna usa despues()
+const SE_ACTUALIZAN = ['inicio', 'ventas', 'caja', 'reportes', 'historial', 'compras'];   // ninguna usa despues() (en compras, salvo cargar y config)
 const CADA = 30 * 1000;
 function editando() {
   const app = $('app'), a = document.activeElement;
@@ -588,6 +679,7 @@ async function actualizarSola() {
   const hash = location.hash, [ruta, arg] = (hash.slice(1) || 'inicio').split('/');
   const r = RUTAS[ruta];
   if (!SE_ACTUALIZAN.includes(ruta) || !r || (r.rol && !es(r.rol)) || editando()) return;
+  if (ruta === 'compras' && /^(cargar|config)/.test(arg || '')) return;
   const n = ST.pintadas;
   let html;
   try { html = await r.f(arg); } catch (e) { return; }                     // sin internet: se reintenta en la próxima vuelta
@@ -1320,8 +1412,7 @@ async function vCaja() {
   const traban = c ? pend.filter(p => p.caja_id === c.id || (!p.caja_id && p.fecha.slice(0, 10) === c.fecha)) : [];
   return `<h1>Caja · ${esc(sucNombre(suc))}</h1>
   ${listaPendientes(pend)}
-  ${!c ? `<form class="panel fila" onsubmit="event.preventDefault();accionCaja('tp_caja_abrir',{p_apertura:numero(this.apertura.value)},'Caja abierta.')">
-      <label>Efectivo inicial<input type="number" name="apertura" min="0" step="1" required></label><button>Abrir caja</button></form>`
+  ${!c ? formAbrirCaja(suc)
   : `<div class="kpis">
       <div class="kpi"><small>Abierta</small><b>${c.abierta_en.slice(11, 16)}</b> <span class="suave">por ${esc(c.abierta_por || '—')}</span></div>
       <div class="kpi"><small>Ventas del turno</small><b>${fmt(x.total_ventas)}</b></div>
@@ -1389,6 +1480,31 @@ async function vCaja() {
         || '<tr><td colspan="13" class="suave">Todavía no hay cierres.</td></tr>'}
     </table>
   </div>`;
+}
+// Abrir la caja (023): con la cuenta del local hay que elegir qué vendedor la abre. «despues» = adónde ir al abrir.
+function formAbrirCaja(suc, despues) {
+  const vs = esLocal() ? vendedoresDe(suc) : [];
+  return `<form class="panel fila" style="align-items:flex-end" onsubmit="event.preventDefault();abrirCaja(this${despues ? `,'${despues}'` : ''})">
+    ${esLocal() ? `<label>¿Qué vendedor abre la caja?<select name="vendedor" required><option value="">— Elegí quién abre —</option>
+        ${vs.map(v => `<option value="${v.id}">${esc(v.nombre)}</option>`).join('')}</select></label>` : ''}
+    <label>Efectivo inicial<input type="number" name="apertura" min="0" step="1" required></label><button>Abrir caja</button>
+    ${despues ? `<a href="${despues}" style="align-self:center">Ahora no</a>` : ''}
+    ${esLocal() && !vs.length ? '<p class="mal" style="flex-basis:100%">Este local no tiene vendedores asignados: pedíselo al dueño.</p>' : ''}</form>`;
+}
+async function abrirCaja(f, despues) {
+  try {
+    await rpc('tp_caja_abrir', { ...U(), p_suc: sucActual(), p_apertura: numero(f.apertura.value), p_vendedor: f.vendedor ? +f.vendedor.value || null : null });
+    avisar('Caja abierta.');
+  } catch (e) { avisar(e.message, true); return render(); }
+  despues ? ir(despues) : render();
+}
+// Pantalla que aparece al entrar con la cuenta del local y la caja cerrada (023)
+async function vAbrirCaja() {
+  const suc = sucActual();
+  if (!suc) return '<div class="aviso">Elegí la sucursal arriba a la derecha.</div>';
+  const d = await rpc('tp_caja', { ...U(), p_suc: suc });
+  if (d.caja) return `<div class="aviso">La caja de ${esc(sucNombre(suc))} ya está abierta.</div><p><a class="boton" href="#inicio">Ir al inicio</a></p>`;
+  return `<h1>Abrir la caja de ${esc(sucNombre(suc))}</h1>${formAbrirCaja(suc, '#inicio')}`;
 }
 // Control con el cierre Z de la fiscal (018): ventas sin efectivo contra el total Z que escribe el vendedor
 const sinEfectivo = x => (x.medios || []).filter(m => m.medio !== 'Efectivo').reduce((s, m) => s + +m.total, 0);
@@ -2133,6 +2249,7 @@ const IA = { charla: [], cargando: false, info: null };
 const IA_EJEMPLOS = ['¿Cuánto vendimos hoy y cómo venimos contra ayer?', '¿Qué modelos de celular piden más fundas este mes?',
   '¿Qué local va mejor contra su objetivo del mes?', '¿En qué horarios se vende más esta semana?',
   '¿Qué productos activos no se vendieron en los últimos 30 días?', '¿Quién vendió más este mes y con qué ticket promedio?'];
+const IA_EJEMPLOS_COMPRAS = ['¿Qué local superó su presupuesto de compras este mes?', '¿Cuánto presupuesto de compras queda disponible en cada local?'];
 const iaSuc = () => global() ? ST.suc : sucActual();
 // Texto de la IA → HTML seguro: **negrita**, listas con "- " y saltos de línea
 function iaTexto(t) {
@@ -2197,7 +2314,7 @@ function iaPintar() {
       <div class="ia-pregunta"><span>${esc(x.pregunta)}</span></div>
       <div class="panel ia-resp">${x.cargando ? '<p class="suave ia-pensando">Consultando los datos… puede tardar hasta un minuto.</p>' : iaRespuesta(x, i)}</div>
     </div>`).join('') || `<div class="panel no-imprimir"><p class="suave" style="margin-top:0">Preguntá en castellano, como se lo preguntarías a una persona. Por ejemplo:</p>
-      <div class="cats">${IA_EJEMPLOS.map(e => `<button type="button" onclick="iaPreguntar(${esc(JSON.stringify(e))})">${esc(e)}</button>`).join('')}</div></div>`;
+      <div class="cats">${[...IA_EJEMPLOS, ...(es('supervisor') ? IA_EJEMPLOS_COMPRAS : [])].map(e => `<button type="button" onclick="iaPreguntar(${esc(JSON.stringify(e))})">${esc(e)}</button>`).join('')}</div></div>`;
   const b = $('ia-enviar'); if (b) b.disabled = IA.cargando;
   const n = $('ia-uso'); if (n && IA.info) n.textContent = iaUso();
 }
@@ -2404,6 +2521,891 @@ async function guardarConfig(accion, datos) {
   render();
 }
 
+// ---------------------------------------------------------------- compras y presupuestos (v28 + SQL 024)
+// Facturas de proveedores imputadas por local, categoría (originales / genéricos) y mes, contra un presupuesto que sale del objetivo de
+// venta de cada local (Config → Objetivos) repartido según lo que vendió de cada clase × 50 % / 23 %, más el saldo del mes anterior.
+// Supervisor, dueño y superadmin. Porcentajes, grupos, cierres y reaperturas: dueño y superadmin. Todos los cálculos los hace la base.
+const CP = { mes: null, grupo: '', vista: leer('cp-vista', 'h'), orden: { col: -1, dir: 1 }, f: {}, ev: {}, rep: {}, pf: {}, carga: null, editImp: null, editFac: false };
+const CAT = { original: 'Originales', generico: 'Genéricos' };
+const COLOR_CAT = { original: 'var(--c-orig)', generico: 'var(--c-gen)' };
+// Estado con forma + texto (nunca sólo color): verde < 80 %, amarillo de 80 % a menos de 100 %, rojo desde 100 %
+const ESTADO = { disponible: ['●', 'Disponible'], atencion: ['◆', 'Atención'], excedido: ['▲', 'Excedido'],
+                 sin_presupuesto: ['○', 'Sin presupuesto disponible'], insuficiente: ['▼', 'Presupuesto insuficiente'] };
+const estadoHtml = e => ESTADO[e] ? `<span class="estado ${e}">${ESTADO[e][0]} ${ESTADO[e][1]}</span>` : '';
+const pct1 = n => n == null ? '—' : (+n).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+const fmtSigno = n => (+n > 0 ? '+' : '') + fmt(n);
+// Con centavos sólo si los tiene (importes de facturas)
+const fmtC = n => { const v = Math.abs(+n || 0), c = Math.round(v * 100) % 100 !== 0;
+  return ((+n || 0) < 0 ? '-$ ' : '$ ') + v.toLocaleString('es-AR', { minimumFractionDigits: c ? 2 : 0, maximumFractionDigits: 2 }); };
+// Corto para gráficos: $ 7,5 M · $ 850 mil
+const fmtM = n => { const a = Math.abs(+n || 0), s = (+n || 0) < 0 ? '-$ ' : '$ ';
+  return a >= 1e6 ? s + (a / 1e6).toLocaleString('es-AR', { maximumFractionDigits: a >= 1e8 ? 0 : 1 }) + ' M'
+       : a >= 1e3 ? s + Math.round(a / 1e3).toLocaleString('es-AR') + ' mil' : s + Math.round(a); };
+const mesTxt = k => k ? `${MESES[+k.slice(5, 7)]} ${k.slice(0, 4)}` : '';
+const mesCorto = k => `${MESES[+k.slice(5, 7)].slice(0, 3)} ${k.slice(2, 4)}`;
+const mesSumar = (k, n) => { const t = +k.slice(0, 4) * 12 + +k.slice(5, 7) - 1 + n; return `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, '0')}`; };
+const mesesEntre = (d, h) => { const r = []; for (let k = d; k <= h && r.length < 60; k = mesSumar(k, 1)) r.push(k); return r; };
+const opcionesMes = (lista, actual) => lista.map(k => `<option value="${k}" ${k === actual ? 'selected' : ''}>${mesTxt(k)}</option>`).join('');
+const mesDeImp = i => `${i.anio}-${String(i.mes).padStart(2, '0')}`;
+const numCsv = n => n == null || n === '' ? '' : String(Math.round(+n * 100) / 100).replace('.', ',');
+// Igual que techpoint.clave_texto: sin mayúsculas, acentos, espacios ni signos
+const claveTexto = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const cpTope = info => info.hoy > info.inicio ? info.hoy : info.inicio;
+const cpMesesAbiertos = info => mesesEntre(info.inicio, mesSumar(cpTope(info), 2)).filter(k => !info.cerrados.includes(k));
+// Filtro de alcance: '' = toda la empresa, 'g2' = un grupo, 's5' = un local
+const ambitoArgs = a => ({ p_suc: /^s\d+$/.test(a || '') ? +a.slice(1) : null, p_grupo: /^g\d+$/.test(a || '') ? +a.slice(1) : null });
+const opcionesAmbito = (info, a) => `<option value="">Toda la empresa</option>
+  <optgroup label="Grupos">${info.grupos.map(g => `<option value="g${g.id}" ${a === 'g' + g.id ? 'selected' : ''}>${esc(g.nombre)}</option>`).join('')}</optgroup>
+  <optgroup label="Locales">${info.sucursales.map(s => `<option value="s${s.id}" ${a === 's' + s.id ? 'selected' : ''}>${esc(s.nombre)}</option>`).join('')}</optgroup>`;
+const opcionesCat = c => `<option value="">Las dos</option>${Object.entries(CAT).map(([v, t]) => `<option value="${v}" ${c === v ? 'selected' : ''}>${t}</option>`).join('')}`;
+// Las dos categorías juntas (o una sola) de un {original, generico}
+function cpSumaCat(x, cat) {
+  if (cat) return x[cat];
+  const o = x.original, g = x.generico, pr = +o.presupuesto + +g.presupuesto, co = +o.compras + +g.compras;
+  return { presupuesto: pr, compras: co, saldo: pr - co, base: +o.base + +g.base, saldo_inicial: +o.saldo_inicial + +g.saldo_inicial,
+           pct: pr > 0 ? co / pr * 100 : null,
+           estado: pr < 0 ? 'insuficiente' : pr === 0 ? 'sin_presupuesto' : co >= pr ? 'excedido' : co >= pr * .8 ? 'atencion' : 'disponible' };
+}
+const cpLeyenda = items => `<div class="leyenda">${items.map(([t, c, tipo]) => `<span class="${tipo || ''}" style="--c:${c}">${t}</span>`).join('')}</div>`;
+const cpMiniBarra = (o, g, max, tip) => `<div class="mini-barra" data-tip="${esc(tip)}"><i style="width:${max > 0 ? Math.max(0, o) / max * 100 : 0}%;background:var(--c-orig)"></i><i style="width:${max > 0 ? Math.max(0, g) / max * 100 : 0}%;background:var(--c-gen)"></i></div>`;
+function cpFiltrarFilas(id, q) {
+  const k = claveTexto(q);
+  document.querySelectorAll(`#${id} tr[data-buscar]`).forEach(tr => { tr.hidden = !!k && !tr.dataset.buscar.includes(k); });
+}
+
+// Globo con el detalle al pasar el mouse o tocar una barra (elementos con data-tip)
+function tipIniciar() {
+  const tip = document.createElement('div'); tip.id = 'tip'; tip.hidden = true; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip);
+  const mostrar = (el, x, y) => {
+    tip.textContent = el.getAttribute('data-tip'); tip.hidden = false;
+    const r = tip.getBoundingClientRect();
+    tip.style.left = Math.max(8, Math.min(innerWidth - r.width - 8, x + 14)) + 'px';
+    tip.style.top = (y - r.height - 12 < 8 ? y + 18 : y - r.height - 12) + 'px';
+  };
+  const de = e => e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
+  document.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; const el = de(e); if (el) mostrar(el, e.clientX, e.clientY); else tip.hidden = true; });
+  document.addEventListener('pointerdown', e => { const el = de(e); if (el && e.pointerType !== 'mouse') mostrar(el, e.clientX, e.clientY); else if (!el) tip.hidden = true; });
+  document.addEventListener('scroll', () => { tip.hidden = true; }, { passive: true, capture: true });
+}
+
+const PESTANAS_CP = [['', 'Resumen'], ['cargar', 'Cargar factura'], ['facturas', 'Facturas'], ['proveedores', 'Proveedores'],
+                     ['evolucion', 'Evolución'], ['reportes', 'Reportes'], ['config', 'Configuración']];
+async function vCompras(arg) {
+  const [sub, id] = (arg || '').split('-');
+  const f = { '': cpResumen, cargar: cpCargar, facturas: cpFacturas, factura: cpFactura, proveedores: cpProveedores, proveedor: cpProveedor,
+              evolucion: cpEvolucion, reportes: cpReportes, local: cpLocal, config: cpConfig }[sub];
+  if (!f) return '<div class="aviso error">Esa pantalla no existe. <a href="#compras">Ir a Compras</a></div>';
+  if (sub === 'config' && !es('dueno')) return '<div class="aviso error">La configuración de compras es sólo para el dueño. <a href="#compras">Ir a Compras</a></div>';
+  const activa = { factura: 'facturas', proveedor: 'proveedores', local: '' }[sub] ?? sub;
+  const cuerpo = await f(id ? +id : null);
+  return `<h1>Compras</h1><nav class="pestanas no-imprimir">${PESTANAS_CP.filter(([k]) => k !== 'config' || es('dueno')).map(([k, t]) =>
+    `<a href="#compras${k ? '/' + k : ''}" class="${activa === k ? 'activa' : ''}">${t}</a>`).join('')}</nav>${cuerpo}`;
+}
+const cpMesArgs = () => ({ p_anio: CP.mes ? +CP.mes.slice(0, 4) : null, p_mes: CP.mes ? +CP.mes.slice(5, 7) : null });
+const cpMesesLista = info => { const l = mesesEntre(info.inicio, mesSumar(cpTope(info), 3)); if (CP.mes && !l.includes(CP.mes)) l.push(CP.mes); return l; };
+
+// ---- resumen del mes
+async function cpResumen() {
+  const d = await rpc('tp_compras_presupuesto', { ...U(), ...cpMesArgs() });
+  CP.mes = d.mes; CP.info = d.info; CP.datos = d;
+  const info = d.info;
+  if (CP.grupo && !info.grupos.some(g => String(g.id) === CP.grupo)) CP.grupo = '';
+  const locales = d.locales.filter(l => !CP.grupo || String(l.grupo_id) === CP.grupo);
+  const tot = CP.grupo ? d.grupos.find(g => String(g.grupo_id) === CP.grupo) || d.empresa : d.empresa;
+  const t = tot.total, sinObj = locales.filter(l => l.objetivo == null), sinRep = locales.filter(l => l.objetivo != null && l.reparto == null);
+  const kpi = (titulo, valor, extra, cls) => `<div class="kpi"><small>${titulo}</small><b class="${cls || ''}">${valor}</b>${extra ? `<span class="var suave">${extra}</span>` : ''}</div>`;
+  return `<div class="fila no-imprimir" style="margin-bottom:18px;align-items:center">
+      <label>Mes<select onchange="CP.mes=this.value;render()">${opcionesMes(cpMesesLista(info), d.mes)}</select></label>
+      <div class="cats" style="align-self:end">${[['', 'Toda la empresa'], ...info.grupos.map(g => [String(g.id), g.nombre])].map(([v, n]) =>
+        `<button type="button" class="${CP.grupo === v ? 'activa' : ''}" onclick="CP.grupo='${v}';render()">${esc(n)}</button>`).join('')}</div>
+      <span class="etiqueta ${d.cerrado ? 'rosa' : 'azul'}" style="align-self:end;margin-bottom:8px">${d.cerrado ? 'Mes cerrado' : 'Mes abierto'}</span>
+      <span style="flex:1"></span><a class="boton" href="#compras/cargar" style="align-self:end">+ Cargar factura</a>
+    </div>
+    ${sinObj.length ? `<div class="aviso">Sin objetivo de venta para ${mesTxt(d.mes)}: <b>${sinObj.map(l => esc(l.sucursal)).join(', ')}</b>. Su presupuesto base queda en $ 0 hasta que se cargue en Config → Objetivos.</div>` : ''}
+    ${sinRep.length ? `<div class="aviso">Sin ventas con productos marcados como originales o genéricos para repartir el objetivo: <b>${sinRep.map(l => esc(l.sucursal)).join(', ')}</b>. Su presupuesto base queda en $ 0.</div>` : ''}
+    <div class="kpis">
+      ${kpi('Ventas proyectadas', fmt(t.proyectada), tot.objetivo != null ? `objetivo del mes ${fmt(tot.objetivo)}` : 'sin objetivos cargados')}
+      ${kpi('Presupuesto de compras', fmt(t.presupuesto), `base ${fmt(t.base)} · saldo anterior ${fmtSigno(t.saldo_inicial)}`)}
+      ${kpi('Compras realizadas', fmt(t.compras))}
+      ${kpi('Presupuesto utilizado', pct1(t.pct), estadoHtml(t.estado))}
+      ${kpi('Saldo disponible', fmtSigno(t.saldo), '', +t.saldo < 0 ? 'mal' : '')}
+      ${kpi('Compras originales', fmt(tot.original.compras), `de ${fmt(tot.original.presupuesto)} · ${pct1(tot.original.pct)}`)}
+      ${kpi('Compras genéricos', fmt(tot.generico.compras), `de ${fmt(tot.generico.presupuesto)} · ${pct1(tot.generico.pct)}`)}
+    </div>
+    <div class="panel">
+      <div class="fila" style="justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="margin:0">Presupuesto y compras por local</h2>
+        <div class="cats no-imprimir">${[['h', 'Horizontal'], ['v', 'Vertical']].map(([v, n]) =>
+          `<button type="button" class="${CP.vista === v ? 'activa' : ''}" onclick="CP.vista='${v}';guardar('cp-vista','${v}');render()">${n}</button>`).join('')}</div></div>
+      ${cpLeyenda([['Presupuesto originales', 'var(--c-orig)', 'tenue'], ['Compras originales', 'var(--c-orig)'], ['Presupuesto genéricos', 'var(--c-gen)', 'tenue'],
+                   ['Compras genéricos', 'var(--c-gen)'], ...(CP.vista === 'v' ? [] : [['fin del presupuesto', 'var(--texto)', 'tope']])])}
+      ${CP.vista === 'v' ? cpGraficoV(locales) : cpGraficoH(locales)}
+      <p class="suave" style="margin-bottom:0;font-size:13px">${CP.vista === 'v' ? 'Arriba de cada barra de compras: el porcentaje del presupuesto usado.' : 'Al lado de cada barra: lo comprado, el presupuesto y el porcentaje usado.'} Pasá el mouse (o tocá) para ver el saldo.</p>
+    </div>
+    <h2>Avance por local</h2>
+    <div class="locales-avance">${locales.map(cpTarjetaLocal).join('')}</div>
+    ${cpTablaControl(locales, tot)}
+    ${cpCierre(d)}`;
+}
+const cpTip = (suc, c, x) => `${suc} · ${CAT[c]}\nPresupuesto: ${fmt(x.presupuesto)}\nCompras: ${fmt(x.compras)}\nUtilizado: ${pct1(x.pct)}\nSaldo: ${fmtSigno(x.saldo)}\n${ESTADO[x.estado][1]}`;
+// Barras horizontales: el presupuesto es la pista tenue, lo comprado la barra llena; la rayita marca dónde termina el presupuesto
+function cpGraficoH(locales) {
+  const max = Math.max(1, ...locales.flatMap(l => ['original', 'generico'].flatMap(c => [+l[c].presupuesto, +l[c].compras])));
+  const w = v => Math.max(0, +v) / max * 100;
+  return `<div class="bullet">${locales.map(l => `<div class="bullet-grupo"><a href="#compras/local-${l.sucursal_id}">${esc(l.sucursal)}</a>
+    ${['original', 'generico'].map(c => { const x = l[c], p = +x.presupuesto > 0;
+      return `<div class="bullet-fila" style="--c:${COLOR_CAT[c]}" data-tip="${esc(cpTip(l.sucursal, c, x))}">
+        <span class="bullet-cat">${c === 'original' ? 'Orig.' : 'Gen.'}</span>
+        <div class="bullet-pista">${p ? `<i class="pres" style="width:${w(x.presupuesto)}%"></i>` : ''}<i class="comp" style="width:${w(x.compras)}%"></i>${p ? `<b class="tope" style="left:${w(x.presupuesto)}%"></b>` : ''}</div>
+        <span class="bullet-dato">${fmtM(x.compras)} <span class="suave">de ${fmtM(x.presupuesto)}</span> · <b>${pct1(x.pct)}</b></span></div>`; }).join('')}</div>`).join('')}</div>`;
+}
+// Barra con la punta de los datos redondeada (4 px) y la base recta. h > 0 sube desde la base, h < 0 baja.
+function rectV(x, base, w, h, color, extra = '') {
+  if (Math.abs(h) < .5 || w <= 0) return '';
+  const r = Math.min(4, w / 2, Math.abs(h)), f = v => +v.toFixed(1);
+  if (h > 0) return `<path d="M${f(x)},${f(base)}v${f(-(h - r))}a${r},${r} 0 0 1 ${r},${-r}h${f(w - 2 * r)}a${r},${r} 0 0 1 ${r},${r}v${f(h - r)}z" fill="${color}" ${extra}/>`;
+  const a = -h;
+  return `<path d="M${f(x)},${f(base)}v${f(a - r)}a${r},${r} 0 0 0 ${r},${r}h${f(w - 2 * r)}a${r},${r} 0 0 0 ${r},${-r}v${f(-(a - r))}z" fill="${color}" ${extra}/>`;
+}
+// Escala con números redondos: de min a max en unos 4 pasos
+function cpEje(min, max) {
+  const bruto = Math.max(1e-9, max - min) / 4, p = Math.pow(10, Math.floor(Math.log10(bruto)));
+  const paso = [1, 2, 2.5, 5, 10].map(m => m * p).find(s => s >= bruto);
+  const a = Math.floor(min / paso) * paso, b = Math.max(a + paso, Math.ceil(max / paso) * paso), marcas = [];
+  for (let v = a; v <= b + paso / 2; v += paso) marcas.push(Math.round(v * 1e6) / 1e6);
+  return { min: a, max: b, marcas };
+}
+// Ancho del panel donde va el gráfico (todo el ancho o media grilla): se dibuja a ese tamaño para que la letra quede siempre de 12 px.
+// Si no entra (muchos meses en el celular), se desplaza de costado.
+function cpAncho(mitad) {
+  const m = document.querySelector('main'), cs = m && getComputedStyle(m);
+  // si la página todavía no tiene barra de desplazamiento, va a aparecer al dibujar: se descuenta
+  const barra = innerWidth === document.documentElement.clientWidth && matchMedia('(pointer: fine)').matches ? 17 : 0;
+  const w = m ? m.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - barra : 900;
+  return Math.max(280, Math.floor((mitad && w >= 660 ? (w - 20) / 2 : w) - 46));
+}
+const cpSvg = (W, H, titulo, cuerpo) => `<div class="tabla-scroll"><svg class="graf" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(titulo)}">${cuerpo}</svg></div>`;
+const cpGrilla = (eje, y, x0, x1, f) => eje.marcas.map(v => `<line x1="${x0}" x2="${x1}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${v === 0 ? 'var(--borde-2)' : 'var(--borde)'}"/>` +
+  `<text x="${x0 - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${f(v)}</text>`).join('');
+// Barras verticales: por local, presupuesto (tenue) y compras de originales, y lo mismo de genéricos; el % arriba de cada compra
+function cpGraficoV(locales) {
+  const n = Math.max(1, locales.length), W = Math.max(cpAncho(), 90 + n * 96), H = 300, x0 = 76, x1 = W - 10, top = 24, base = H - 40;
+  const eje = cpEje(0, Math.max(1, ...locales.flatMap(l => ['original', 'generico'].flatMap(c => [+l[c].presupuesto, +l[c].compras]))));
+  const y = v => base - (Math.max(0, v) - eje.min) / (eje.max - eje.min) * (base - top);
+  const paso = (x1 - x0) / n, b = Math.max(6, Math.min(22, (paso * .8 - 12) / 4));
+  let s = cpGrilla(eje, y, x0, x1, fmtM);
+  locales.forEach((l, i) => {
+    const cx = x0 + paso * (i + .5), izq = cx - (4 * b + 2 + 8 + 2) / 2;
+    ['original', 'generico'].forEach((c, k) => {
+      const x = izq + k * (2 * b + 2 + 8), v = l[c];
+      s += rectV(x, base, b, base - y(+v.presupuesto), COLOR_CAT[c], 'fill-opacity=".3"') + rectV(x + b + 2, base, b, base - y(+v.compras), COLOR_CAT[c]);
+      if (v.pct != null) s += `<text class="valor" x="${(x + b * 1.5 + 2).toFixed(1)}" y="${(y(+v.compras) - 6).toFixed(1)}" text-anchor="middle">${Math.round(v.pct)}%</text>`;
+      s += `<rect x="${(x - 1).toFixed(1)}" y="${top}" width="${(2 * b + 4).toFixed(1)}" height="${base - top}" fill="transparent" data-tip="${esc(cpTip(l.sucursal, c, v))}"/>`;
+    });
+    s += `<text x="${cx.toFixed(1)}" y="${H - 16}" text-anchor="middle">${esc(l.sucursal)}</text>`;
+  });
+  return cpSvg(W, H, 'Presupuesto y compras por local', s);
+}
+const cpBloqueCat = (x, c) => `<div class="cat-avance">
+    <div class="cat-titulo"><span class="muestra" style="--c:${COLOR_CAT[c]}"></span><b>${CAT[c]}</b>${estadoHtml(x.estado)}</div>
+    <div class="avance" role="img" aria-label="${CAT[c]}: ${pct1(x.pct)} del presupuesto"><i class="${x.estado}" style="width:${Math.min(100, Math.max(0, +x.pct || 0))}%"></i></div>
+    <div class="cifras"><span>Presupuesto<b>${fmt(x.presupuesto)}</b></span><span>Compras<b>${fmt(x.compras)}</b></span>
+      <span>Utilizado<b>${pct1(x.pct)}</b></span><span>Saldo<b class="${+x.saldo < 0 ? 'mal' : ''}">${fmtSigno(x.saldo)}</b></span></div></div>`;
+const cpTarjetaLocal = l => `<div class="panel">
+    <div class="tarjeta-titulo"><h2>${esc(l.sucursal)}</h2><a href="#compras/local-${l.sucursal_id}">Ver detalle</a></div>
+    ${cpBloqueCat(l.original, 'original')}${cpBloqueCat(l.generico, 'generico')}
+    <div class="cifras total-local"><span>Presupuesto total<b>${fmt(l.total.presupuesto)}</b></span><span>Compras totales<b>${fmt(l.total.compras)}</b></span>
+      <span>Avance general<b>${pct1(l.total.pct)}</b></span><span>Saldo total<b class="${+l.total.saldo < 0 ? 'mal' : ''}">${fmtSigno(l.total.saldo)}</b></span></div></div>`;
+// Tabla de control: 13 columnas, se ordena tocando el título
+const COLS_CONTROL = [['Sucursal', l => l.sucursal, 'txt'],
+  ...[['original', 'originales'], ['generico', 'genéricos'], ['total', 'total']].flatMap(([c, n]) => [
+    [`Presupuesto ${n}`, l => l[c].presupuesto], [`Compras ${n}`, l => l[c].compras],
+    [c === 'total' ? 'Avance general' : `Avance ${n}`, l => l[c].pct, 'pct', l => l[c].estado], [`Saldo ${n}`, l => l[c].saldo, 'saldo']])];
+function cpCeldaControl(col, x) {
+  const [, f, tipo, est] = col, v = f(x);
+  if (tipo === 'pct') { const e = est(x); return `<td class="n"><span class="estado ${e}" title="${ESTADO[e][1]}">${ESTADO[e][0]}</span> ${pct1(v)}</td>`; }
+  if (tipo === 'saldo') return `<td class="n ${+v < 0 ? 'mal' : ''}">${fmtSigno(v)}</td>`;
+  return `<td class="n">${fmt(v)}</td>`;
+}
+function cpTablaControl(locales, tot) {
+  const o = CP.orden, col = COLS_CONTROL[o.col];
+  const filas = col ? [...locales].sort((a, b) => { const va = col[1](a), vb = col[1](b);
+    if (col[2] === 'txt') return o.dir * String(va).localeCompare(String(vb));
+    if (va == null || vb == null) return (va == null) - (vb == null);
+    return o.dir * (+va - +vb); }) : locales;
+  return `<div class="panel">
+    <div class="fila" style="justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="margin:0">Tabla de control</h2>
+      <div class="fila no-imprimir" style="align-items:center"><input type="search" placeholder="Buscar local" aria-label="Buscar local" oninput="cpFiltrarFilas('cp-control', this.value)">
+        <button type="button" class="sec chico" onclick="cpExcelControl()">Descargar Excel (CSV)</button></div></div>
+    <div class="tabla-scroll"><table id="cp-control">
+      <tr>${COLS_CONTROL.map((c, i) => `<th class="ordenable ${i ? 'n' : ''}" onclick="cpOrdenar(${i})" aria-sort="${o.col === i ? (o.dir > 0 ? 'ascending' : 'descending') : 'none'}">${c[0]}${o.col === i ? (o.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr>
+      ${filas.map(l => `<tr data-buscar="${esc(claveTexto(l.sucursal + ' ' + (l.grupo || '')))}"><td style="white-space:nowrap"><a href="#compras/local-${l.sucursal_id}">${esc(l.sucursal)}</a></td>${COLS_CONTROL.slice(1).map(c => cpCeldaControl(c, l)).join('')}</tr>`).join('')}
+      <tr class="total"><td style="white-space:nowrap">${CP.grupo ? esc(tot.grupo) : 'Toda la empresa'}</td>${COLS_CONTROL.slice(1).map(c => cpCeldaControl(c, tot)).join('')}</tr>
+    </table></div>
+    <p class="suave" style="margin-bottom:0;font-size:13px">● Disponible: menos del 80 % · ◆ Atención: del 80 % a menos del 100 % · ▲ Excedido: 100 % o más. Saldo negativo = se pasó (se descuenta del mes siguiente).</p></div>`;
+}
+function cpOrdenar(i) { CP.orden = CP.orden.col === i ? { col: i, dir: -CP.orden.dir } : { col: i, dir: i ? -1 : 1 }; render(); }
+function cpExcelControl() {
+  const d = CP.datos; if (!d) return;
+  const locales = d.locales.filter(l => !CP.grupo || String(l.grupo_id) === CP.grupo);
+  const tot = CP.grupo ? d.grupos.find(g => String(g.grupo_id) === CP.grupo) || d.empresa : d.empresa;
+  const enc = ['Sucursal', 'Grupo', ...['originales', 'genéricos', 'total'].flatMap(n => [`Presupuesto ${n}`, `Compras ${n}`, `Avance ${n} (%)`, `Saldo ${n}`, `Estado ${n}`])];
+  const fila = (n, g, x) => [n, g, ...['original', 'generico', 'total'].flatMap(c => [numCsv(x[c].presupuesto), numCsv(x[c].compras), numCsv(x[c].pct), numCsv(x[c].saldo), ESTADO[x[c].estado][1]])];
+  const csv = [enc, ...locales.map(l => fila(l.sucursal, l.grupo || '', l)), fila(CP.grupo ? tot.grupo : 'Toda la empresa', '', tot)].map(f => f.map(celdaCsv).join(';')).join('\r\n');
+  descargar(`compras_control_${d.mes}.csv`, '﻿' + csv, 'text/csv');
+}
+function cpCierre(d) {
+  const c = d.cierre || {};
+  return `<div class="panel"><h2>Cierre de ${esc(d.nombre)}</h2>
+    ${d.cerrado ? `<p>Cerrado por <b>${esc(c.cerrado_por || '—')}</b> el ${fc(c.cerrado_en)}. Los números de este mes quedaron fijos (objetivos, reparto, porcentajes, compras y saldos) y no se pueden cargar ni corregir compras de este mes.</p>`
+      : `<p class="suave">Mes abierto: se recalcula solo con los objetivos, las ventas y las compras cargadas. Al cerrarlo, los números quedan fijos y el saldo pasa al mes siguiente.${c.reabierto_en ? ` Se reabrió el ${fc(c.reabierto_en)} (${esc(c.reabierto_por || '')}): ${esc(c.motivo || '')}.` : ''}</p>`}
+    ${d.puede_cerrar ? `<button onclick="cpCerrar(${d.anio}, ${d.mes_num})">Cerrar ${esc(d.nombre)}</button>` : ''}
+    ${!d.cerrado && !d.puede_cerrar && es('dueno') && d.por_que_no_cierra ? `<p class="suave" style="margin-bottom:0">${esc(d.por_que_no_cierra)}</p>` : ''}
+    ${d.puede_reabrir ? `<button class="sec" onclick="cpReabrir(${d.anio}, ${d.mes_num})">Reabrir ${esc(d.nombre)}</button>` : ''}
+    ${d.cerrado && !d.puede_reabrir && es('dueno') ? '<p class="suave" style="margin-bottom:0">Para reabrirlo, primero hay que reabrir los meses cerrados posteriores.</p>' : ''}</div>`;
+}
+async function cpCerrar(a, m) {
+  const t = CP.datos.empresa.total;
+  if (!confirm(`¿Cerrar ${MESES[m]} ${a}?\n\nPresupuesto ${fmt(t.presupuesto)} · compras ${fmt(t.compras)} · saldo que pasa a ${mesTxt(mesSumar(CP.datos.mes, 1))}: ${fmtSigno(t.saldo)}.\n\nDespués no se pueden cargar ni corregir compras de ese mes (se puede reabrir, con motivo).`)) return;
+  try { await rpc('tp_compras_cerrar', { ...U(), p_anio: a, p_mes: m }); avisar(`Listo: ${MESES[m]} ${a} quedó cerrado.`); }
+  catch (e) { avisar(e.message, true); }
+  render();
+}
+async function cpReabrir(a, m) {
+  const motivo = prompt(`¿Por qué se reabre ${MESES[m]} ${a}? (queda en el historial)`);
+  if (motivo == null) return;
+  try { await rpc('tp_compras_reabrir', { ...U(), p_anio: a, p_mes: m, p_motivo: motivo }); avisar(`Listo: ${MESES[m]} ${a} está abierto otra vez. Los saldos de los meses siguientes se recalcularon.`); }
+  catch (e) { avisar(e.message, true); }
+  render();
+}
+
+// ---- detalle de un local: el cálculo paso a paso, los últimos meses y las facturas del mes
+async function cpLocal(id) {
+  const d = await rpc('tp_compras_presupuesto', { ...U(), ...cpMesArgs() });
+  CP.mes = d.mes; CP.info = d.info;
+  const l = d.locales.find(x => x.sucursal_id === id);
+  if (!l) return '<div class="aviso error">Ese local no está activo. <a href="#compras">Volver</a></div>';
+  const [ev, fac] = await Promise.all([
+    rpc('tp_compras_evolucion', { ...U(), p_desde: mesSumar(d.mes, -5), p_hasta: d.mes, p_suc: id, p_grupo: null }),
+    rpc('tp_compras_facturas', { ...U(), p_f: { sucursal_id: id, anio: d.anio, mes: d.mes_num } })]);
+  const ant = mesSumar(d.mes, -1), po = l.participacion_original, pc = l.porcentajes || {};
+  const fuente = { anterior: `lo vendido en ${mesTxt(ant)}`, anterior_parcial: `lo vendido en ${mesTxt(ant)} hasta hoy (ese mes no terminó: el reparto se va ajustando)`,
+    actual: d.mes <= d.info.hoy ? `lo vendido en ${mesTxt(d.mes)} hasta hoy (${mesTxt(ant)} no tiene ventas detalladas)` : `lo que va de ${mesTxt(d.info.hoy)}` }[l.reparto];
+  const fila = (t, o, g, cls) => `<tr class="${cls || ''}"><td>${t}</td><td class="n">${o}</td><td class="n">${g}</td></tr>`;
+  const filas = ev.map(m => ({ ...m, t: cpSumaCat(m, '') }));
+  return `<p class="no-imprimir"><a href="#compras">← Resumen</a></p>
+    <div class="fila no-imprimir" style="margin-bottom:16px"><label>Mes<select onchange="CP.mes=this.value;render()">${opcionesMes(cpMesesLista(d.info), d.mes)}</select></label>
+      <label>Local<select onchange="ir('#compras/local-'+this.value)">${d.info.sucursales.map(s => `<option value="${s.id}" ${s.id === id ? 'selected' : ''}>${esc(s.nombre)}</option>`).join('')}</select></label></div>
+    <h2>${esc(l.sucursal)} <span class="suave">· ${esc(l.grupo || 'sin grupo')} · ${esc(d.nombre)}${d.cerrado ? ' (cerrado)' : ''}</span></h2>
+    <div class="grilla">
+      <div class="panel">${cpBloqueCat(l.original, 'original')}${cpBloqueCat(l.generico, 'generico')}
+        <div class="cifras total-local"><span>Presupuesto total<b>${fmt(l.total.presupuesto)}</b></span><span>Compras totales<b>${fmt(l.total.compras)}</b></span>
+          <span>Avance general<b>${pct1(l.total.pct)}</b></span><span>Saldo total<b class="${+l.total.saldo < 0 ? 'mal' : ''}">${fmtSigno(l.total.saldo)}</b></span></div></div>
+      <div class="panel tabla-scroll"><h2>Cómo se calcula</h2>
+        <table><tr><th></th><th class="n">Originales</th><th class="n">Genéricos</th></tr>
+          <tr><td>Objetivo de venta del mes</td><td class="n" colspan="2">${l.objetivo == null ? '<span class="alerta">sin cargar (Config → Objetivos)</span>' : fmt(l.objetivo)}</td></tr>
+          ${fila('Reparto según lo vendido', po == null ? '<span class="alerta">sin ventas detalladas</span>' : pct1(po * 100), po == null ? '—' : pct1((1 - po) * 100))}
+          ${fila('Ventas proyectadas', fmt(l.original.proyectada), fmt(l.generico.proyectada))}
+          ${fila('Porcentaje para compras', pct1(pc.original), pct1(pc.generico))}
+          ${fila('Presupuesto base', fmt(l.original.base), fmt(l.generico.base))}
+          ${fila(`Saldo de ${mesTxt(ant)}`, fmtSigno(l.original.saldo_inicial), fmtSigno(l.generico.saldo_inicial))}
+          ${fila('Presupuesto final', fmt(l.original.presupuesto), fmt(l.generico.presupuesto), 'total')}
+          ${fila('Compras', fmt(l.original.compras), fmt(l.generico.compras))}
+          ${fila('Saldo', fmtSigno(l.original.saldo), fmtSigno(l.generico.saldo), 'total')}
+        </table>
+        <p class="suave" style="margin-bottom:0;font-size:13px">${fuente ? `Reparto: ${fuente}${l.reparto_ventas ? `, ${l.reparto_ventas} venta${l.reparto_ventas === 1 ? '' : 's'} con productos marcados` : ''}. ` : ''}Proyectadas = objetivo × reparto. Base = proyectadas × porcentaje. Final = base + saldo del mes anterior (si se pasó, resta). Originales y genéricos no se compensan.</p></div>
+    </div>
+    <div class="panel"><h2>Últimos meses</h2>${cpLeyenda([['Compras originales', 'var(--c-orig)'], ['Compras genéricos', 'var(--c-gen)'], ['Presupuesto', 'var(--c-ref)', 'linea']])}
+      ${cpGrafPesos(filas, '')}${cpTablaEvol(filas, '')}</div>
+    <div class="panel tabla-scroll"><h2>Facturas imputadas a ${esc(l.sucursal)} en ${esc(d.nombre)}</h2>
+      <table><tr><th>Fecha</th><th>Proveedor</th><th>Número</th><th class="n">En este local</th><th class="n">Total factura</th></tr>
+        ${fac.map(r => `<tr class="${r.anulada ? 'anulada' : ''}"><td>${fd(r.fecha)}</td><td>${esc(r.proveedor)}</td><td><a href="#compras/factura-${r.id}">${esc(r.numero)}</a>${r.tipo === 'nota_credito' ? ' <span class="etiqueta">NC</span>' : ''}</td>
+          <td class="n">${fmtC(r.en_filtro)}</td><td class="n">${fmtC(r.total)}</td></tr>`).join('') || '<tr><td colspan="5" class="suave">Todavía no hay compras imputadas a este local en este mes.</td></tr>'}
+      </table></div>`;
+}
+
+// ---- cargar una factura: simple y rápido
+function cpCargaNueva(extra) {
+  CP.carga = { tipo: 'factura', proveedor: '', numero: '', fecha: hoy(), mes: null, lineas: [{ suc: '', cat: 'original', monto: '' }], existente: null, agregar: false, ...extra };
+}
+async function cpCargar() {
+  const [info, provs] = await Promise.all([rpc('tp_compras_info', U()), rpc('tp_proveedores', U())]);
+  CP.info = info; CP.provs = provs;
+  if (!CP.carga) cpCargaNueva();
+  const c = CP.carga, abiertos = cpMesesAbiertos(info);
+  if (!abiertos.includes(c.mes)) c.mes = abiertos.includes(info.hoy) ? info.hoy : abiertos[0];
+  const activos = provs.filter(p => p.activo), frecuentes = activos.filter(p => p.usos > 0).slice(0, 8);
+  const ult = CP.ultima; CP.ultima = null;
+  despues(() => { cpVerProveedor(); cpPintarExistente(); const e = c.proveedor ? $('cp-num') : $('cp-prov'); if (e) e.focus(); });
+  return `${ult ? cpImpacto(ult) : ''}
+  <form class="panel carga" onsubmit="event.preventDefault();cpConfirmar()" autocomplete="off">
+    <div class="cats" style="margin-bottom:14px">${[['factura', 'Factura'], ['nota_credito', 'Nota de crédito (resta)']].map(([v, t]) =>
+      `<button type="button" class="${c.tipo === v ? 'activa' : ''}" onclick="CP.carga.tipo='${v}';CP.carga.existente=null;CP.carga.agregar=false;render()">${t}</button>`).join('')}</div>
+    <div class="fila">
+      <label class="ancho">Proveedor<input id="cp-prov" list="cp-provs" value="${esc(c.proveedor)}" placeholder="Escribí y elegí, o uno nuevo" required maxlength="80"
+        oninput="CP.carga.proveedor=this.value;cpVerProveedor()" onchange="cpBuscarFactura()"></label>
+      <label>Número<input id="cp-num" value="${esc(c.numero)}" placeholder="0001-00001234" required maxlength="40" oninput="CP.carga.numero=this.value" onchange="cpBuscarFactura()"></label>
+      <label>Fecha de la factura<input type="date" value="${c.fecha}" required onchange="CP.carga.fecha=this.value"></label>
+      <label>Mes al que se imputa<select onchange="CP.carga.mes=this.value">${opcionesMes(abiertos, c.mes)}</select></label>
+    </div>
+    <datalist id="cp-provs">${activos.map(p => `<option value="${esc(p.nombre)}"></option>`).join('')}</datalist>
+    <p id="cp-prov-info" class="suave" style="margin:6px 0 0;font-size:13px"></p>
+    ${frecuentes.length ? `<div class="cats frecuentes"><span class="suave" style="font-size:13px">Frecuentes:</span>${frecuentes.map(p =>
+      `<button type="button" onclick="cpElegirProv(${esc(JSON.stringify(p.nombre))})">${esc(p.nombre)}</button>`).join('')}</div>` : ''}
+    <div id="cp-existente"></div>
+    <h3>A qué local y categoría va</h3>
+    <div id="cp-lineas">${cpLineasHtml()}</div>
+    <div class="fila">
+      <button type="button" class="sec chico" onclick="cpLinea()">+ Otro local o categoría</button>
+      <button type="button" class="sec chico" onclick="$('cp-repartir').hidden=!$('cp-repartir').hidden">Repartir un depósito entre locales</button>
+    </div>
+    <div id="cp-repartir" class="repartir" hidden>
+      <p class="suave" style="margin-top:0;font-size:13px">Para mercadería que entra a un depósito: escribí el total, elegí la categoría y los locales. Se divide en partes iguales y después podés ajustar cada monto.</p>
+      <div class="fila"><label>Total a repartir<input id="cp-rep-total" inputmode="decimal" placeholder="$"></label>
+        <label>Categoría<select id="cp-rep-cat">${Object.entries(CAT).map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label></div>
+      <div class="cats" style="margin:12px 0 8px">${[['', 'Todos'], ...info.grupos.map(g => [String(g.id), g.nombre])].map(([v, t]) =>
+        `<button type="button" onclick="cpRepartirMarcar('${v}')">${esc(t)}</button>`).join('')}</div>
+      <div class="locales">${info.sucursales.map(s => `<label><input type="checkbox" data-rep="${s.id}" data-grupo="${s.grupo_id || ''}"> ${esc(s.nombre)}</label>`).join('')}</div>
+      <p style="margin-bottom:0"><button type="button" class="chico" onclick="cpRepartir()">Repartir</button></p>
+    </div>
+    <div class="pie-carga"><span class="suave">Total<b id="cp-total">${fmtC(cpTotalCarga())}</b></span><button id="cp-ok">Confirmar compra</button></div>
+  </form>
+  <p class="suave" style="font-size:13px">Una factura se puede repartir entre varios locales y categorías. Si ese proveedor ya tiene una factura con el mismo número, se muestra lo que tiene y lo nuevo se le agrega (no se duplica). Para corregir algo ya cargado, abrilo desde <a href="#compras/facturas">Facturas</a>.</p>`;
+}
+function cpLineasHtml() {
+  const c = CP.carga, sucs = CP.info.sucursales;
+  return c.lineas.map((l, i) => `<div class="renglon">
+    <select aria-label="Local" required onchange="CP.carga.lineas[${i}].suc=this.value"><option value="">Local…</option>
+      ${sucs.map(s => `<option value="${s.id}" ${String(l.suc) === String(s.id) ? 'selected' : ''}>${esc(s.nombre)}</option>`).join('')}</select>
+    <select aria-label="Categoría" onchange="CP.carga.lineas[${i}].cat=this.value">${Object.entries(CAT).map(([v, t]) => `<option value="${v}" ${l.cat === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
+    <input aria-label="Monto" inputmode="decimal" placeholder="$ monto" value="${esc(l.monto)}" required oninput="CP.carga.lineas[${i}].monto=this.value;cpTotal()">
+    <button type="button" class="sec chico" title="Quitar este renglón" aria-label="Quitar este renglón" onclick="cpQuitar(${i})" ${c.lineas.length < 2 ? 'disabled' : ''}>✕</button>
+  </div>`).join('');
+}
+const cpTotalCarga = () => CP.carga.lineas.reduce((s, l) => s + numero(l.monto), 0);
+function cpTotal() { const t = $('cp-total'); if (t) t.textContent = fmtC(cpTotalCarga()); }
+function cpLinea() {
+  const u = CP.carga.lineas[CP.carga.lineas.length - 1];
+  CP.carga.lineas.push({ suc: '', cat: u ? u.cat : 'original', monto: '' });
+  $('cp-lineas').innerHTML = cpLineasHtml(); $('cp-lineas').lastElementChild.querySelector('select').focus();
+}
+function cpQuitar(i) { CP.carga.lineas.splice(i, 1); $('cp-lineas').innerHTML = cpLineasHtml(); cpTotal(); }
+function cpRepartirMarcar(g) { document.querySelectorAll('[data-rep]').forEach(c => { c.checked = !g || c.dataset.grupo === g; }); }
+function cpRepartir() {
+  const total = Math.round(numero($('cp-rep-total').value) * 100), cat = $('cp-rep-cat').value;
+  const ids = [...document.querySelectorAll('[data-rep]:checked')].map(c => c.dataset.rep);
+  if (!(total > 0)) return alert('Escribí el total a repartir.');
+  if (!ids.length) return alert('Marcá entre qué locales se reparte.');
+  const parte = Math.floor(total / ids.length), resto = total - parte * ids.length;      // en centavos: la suma da justo el total
+  const nuevas = ids.map((id, i) => ({ suc: id, cat, monto: String((parte + (i < resto ? 1 : 0)) / 100).replace('.', ',') }));
+  CP.carga.lineas = [...CP.carga.lineas.filter(l => l.suc || numero(l.monto) > 0), ...nuevas];
+  $('cp-lineas').innerHTML = cpLineasHtml(); $('cp-repartir').hidden = true; cpTotal();
+}
+function cpProvDe(nombre) { const k = claveTexto(nombre); return k ? (CP.provs || []).find(p => claveTexto(p.nombre) === k) || null : null; }
+function cpVerProveedor() {
+  const el = $('cp-prov-info'); if (!el) return;
+  const n = CP.carga.proveedor.trim().replace(/\s+/g, ' '), p = cpProvDe(n);
+  el.className = p && !p.activo ? 'mal' : 'suave';
+  el.innerHTML = !n ? '' : p ? (p.activo ? `${esc(p.nombre)} · ${p.facturas} factura${p.facturas === 1 ? '' : 's'}${p.ultima ? ` · la última del ${fd(p.ultima)}` : ''}`
+      : `${esc(p.nombre)} está dado de baja: reactivalo en Proveedores para cargarle facturas.`)
+    : `<span class="etiqueta azul">Nuevo</span> Al confirmar se crea el proveedor «${esc(n)}».`;
+}
+function cpElegirProv(n) { CP.carga.proveedor = n; $('cp-prov').value = n; cpVerProveedor(); cpBuscarFactura(); $('cp-num').focus(); }
+async function cpBuscarFactura() {
+  const c = CP.carga, p = cpProvDe(c.proveedor);
+  if (!p || !c.numero.trim()) { c.existente = null; c.agregar = false; return cpPintarExistente(); }
+  try { c.existente = await rpc('tp_compras_factura_buscar', { ...U(), p_proveedor: p.id, p_numero: c.numero, p_tipo: c.tipo }); }
+  catch (e) { c.existente = null; }
+  if (!c.existente) c.agregar = false;
+  cpPintarExistente();
+}
+function cpPintarExistente() {
+  const el = $('cp-existente'), f = CP.carga && CP.carga.existente; if (!el) return;
+  if (!f) { el.innerHTML = ''; return; }
+  const vig = f.imputaciones.filter(i => !i.anulada), nombre = f.tipo === 'nota_credito' ? 'nota de crédito' : 'factura';
+  el.innerHTML = `<div class="aviso pendientes" style="margin:14px 0 0">
+    <b>Esta ${nombre} ya está cargada</b> (${esc(f.proveedor)} ${esc(f.numero)}, del ${fd(f.fecha)}). Tiene:
+    <div class="tabla-scroll"><table class="mini"><tr><th>Local</th><th>Categoría</th><th>Mes</th><th class="n">Importe</th></tr>
+      ${vig.map(i => `<tr><td>${esc(i.sucursal)}</td><td>${CAT[i.categoria]}</td><td>${esc(i.periodo)}</td><td class="n">${fmtC(i.monto)}</td></tr>`).join('') || '<tr><td colspan="4" class="suave">Nada vigente: está anulada.</td></tr>'}
+      <tr class="total"><td colspan="3">Total actual</td><td class="n">${fmtC(Math.abs(f.total))}</td></tr></table></div>
+    <label class="rapida" style="margin:10px 0 0"><input type="checkbox" ${CP.carga.agregar ? 'checked' : ''} onchange="CP.carga.agregar=this.checked">
+      <span>Sí, lo que cargo abajo es parte de esta misma ${nombre}: agregarlo</span></label>
+    <p class="suave" style="margin:6px 0 0;font-size:13px">Si es otra ${nombre}, corregí el número. <a href="#compras/factura-${f.id}">Ver la ${nombre}</a></p></div>`;
+}
+async function cpConfirmar() {
+  const c = CP.carga;
+  const lineas = c.lineas.map(l => ({ sucursal_id: +l.suc || null, categoria: l.cat, monto: Math.round(numero(l.monto) * 100) / 100 }));
+  if (lineas.some(l => !l.sucursal_id)) return alert('Elegí el local en cada renglón.');
+  if (lineas.some(l => !(l.monto > 0))) return alert('Escribí el monto de cada renglón (mayor a cero).');
+  if (c.existente && !c.agregar) return alert('Esa factura ya está cargada. Marcá «Sí, … agregarlo» o corregí el número.');
+  const p = cpProvDe(c.proveedor), b = $('cp-ok'); b.disabled = true;
+  try {
+    const r = await rpc('tp_compras_cargar', { ...U(), p_datos: { proveedor_id: p ? p.id : null, proveedor: p ? null : c.proveedor, numero: c.numero, fecha: c.fecha,
+      tipo: c.tipo, anio: +c.mes.slice(0, 4), mes: +c.mes.slice(5, 7), lineas, agregar: !!(c.existente && c.agregar) } });
+    CP.ultima = r; cpCargaNueva({ fecha: c.fecha, mes: c.mes });
+    render(); window.scrollTo(0, 0);
+  } catch (e) {
+    b.disabled = false; alert(e.message);
+    if (/ya está cargada/.test(e.message)) { CP.provs = await rpc('tp_proveedores', U()).catch(() => CP.provs); cpBuscarFactura(); }
+  }
+}
+function cpImpacto(r) {
+  const f = r.factura, nombre = f.tipo === 'nota_credito' ? 'la nota de crédito' : 'la factura';
+  return `<div class="aviso">Listo: ${r.nueva ? 'se cargó' : 'se agregó a'} ${nombre} <b>${esc(f.proveedor)} ${esc(f.numero)}</b> por ${fmtC(r.total)}
+    (${r.imputaciones} imputación${r.imputaciones === 1 ? '' : 'es'}).${r.nueva ? '' : ` Ahora suma ${fmtC(Math.abs(f.total))}.`} <a href="#compras/factura-${f.id}">Ver ${nombre}</a>
+    <div class="tabla-scroll"><table class="mini" style="margin-top:8px"><tr><th>Así quedó</th><th class="n">Presupuesto</th><th class="n">Compras</th><th class="n">Utilizado</th><th class="n">Saldo</th><th></th></tr>
+    ${r.impacto.map(x => `<tr><td>${esc(x.sucursal)} · ${CAT[x.categoria]} · ${esc(x.mes)}</td><td class="n">${fmt(x.presupuesto)}</td><td class="n">${fmt(x.compras)}</td>
+      <td class="n">${pct1(x.pct)}</td><td class="n ${+x.saldo < 0 ? 'mal' : ''}">${fmtSigno(x.saldo)}</td><td>${estadoHtml(x.estado)}</td></tr>`).join('')}</table></div></div>`;
+}
+
+// ---- historial de facturas
+async function cpFacturas() {
+  const f = CP.f;
+  const [info, filas] = await Promise.all([rpc('tp_compras_info', U()), rpc('tp_compras_facturas', { ...U(), p_f: {
+    q: f.q || null, sucursal_id: f.suc || null, categoria: f.cat || null, anio: f.mes ? +f.mes.slice(0, 4) : null, mes: f.mes ? +f.mes.slice(5, 7) : null,
+    desde: f.desde || null, hasta: f.hasta || null, estado: f.estado || null } })]);
+  CP.info = info; CP.listaFacturas = filas;
+  const parcial = !!(f.suc || f.cat || f.mes), total = filas.reduce((s, r) => s + +(parcial ? r.en_filtro : r.total), 0);
+  return `<form class="panel fila no-imprimir" onsubmit="event.preventDefault();cpFiltroFacturas(this)">
+      <label>Buscar<input name="q" value="${esc(f.q || '')}" placeholder="Proveedor o número"></label>
+      <label>Local<select name="suc"><option value="">Todos</option>${info.sucursales.map(s => `<option value="${s.id}" ${String(f.suc) === String(s.id) ? 'selected' : ''}>${esc(s.nombre)}</option>`).join('')}</select></label>
+      <label>Categoría<select name="cat">${opcionesCat(f.cat)}</select></label>
+      <label>Mes imputado<select name="mes"><option value="">Todos</option>${opcionesMes(mesesEntre(info.inicio, mesSumar(cpTope(info), 12)), f.mes)}</select></label>
+      <label>Fecha de factura desde<input type="date" name="desde" value="${f.desde || ''}"></label>
+      <label>hasta<input type="date" name="hasta" value="${f.hasta || ''}"></label>
+      <label>Estado<select name="estado"><option value="">Todas</option><option value="vigentes" ${f.estado === 'vigentes' ? 'selected' : ''}>Vigentes</option><option value="anuladas" ${f.estado === 'anuladas' ? 'selected' : ''}>Anuladas</option></select></label>
+      <button>Buscar</button>${Object.values(f).some(Boolean) ? '<button type="button" class="sec" onclick="CP.f={};render()">Limpiar</button>' : ''}
+    </form>
+    <div class="panel tabla-scroll">
+      <div class="fila" style="justify-content:space-between;align-items:center;margin-bottom:10px"><span><b>${filas.length}</b> factura${filas.length === 1 ? '' : 's'}${filas.length === 500 ? ' (las últimas 500: achicá la búsqueda)' : ''} · ${parcial ? 'lo que corresponde al filtro' : 'total'}: <b>${fmtC(total)}</b></span>
+        <button type="button" class="sec chico no-imprimir" onclick="cpExcelFacturas()">Descargar Excel (CSV)</button></div>
+      <table><tr><th>Fecha</th><th>Mes imputado</th><th>Proveedor</th><th>Número</th><th class="n">Total</th>${parcial ? '<th class="n">En el filtro</th>' : ''}<th class="n">Imput.</th><th>Locales</th><th>Estado</th></tr>
+        ${filas.map(r => `<tr class="${r.anulada ? 'anulada' : ''}"><td style="white-space:nowrap">${fd(r.fecha)}</td><td>${esc(r.periodos || '—')}</td><td>${esc(r.proveedor)}</td>
+          <td><a href="#compras/factura-${r.id}">${esc(r.numero)}</a>${r.tipo === 'nota_credito' ? ' <span class="etiqueta">NC</span>' : ''}</td><td class="n">${fmtC(r.total)}</td>
+          ${parcial ? `<td class="n">${fmtC(r.en_filtro)}</td>` : ''}<td class="n">${r.imputaciones}</td><td>${esc(r.sucursales || '—')}</td><td class="nota">${r.anulada ? '<span class="mal">Anulada</span>' : 'Vigente'}</td></tr>`).join('')
+          || `<tr><td colspan="${parcial ? 9 : 8}" class="suave">No hay facturas${Object.values(f).some(Boolean) ? ' con esa búsqueda' : ' cargadas todavía'}.</td></tr>`}
+      </table></div>`;
+}
+function cpFiltroFacturas(fm) {
+  CP.f = { q: fm.q.value.trim(), suc: fm.suc.value, cat: fm.cat.value, mes: fm.mes.value, desde: fm.desde.value, hasta: fm.hasta.value, estado: fm.estado.value };
+  render();
+}
+function cpExcelFacturas() {
+  const enc = ['Fecha', 'Mes imputado', 'Proveedor', 'Tipo', 'Número', 'Total', 'En el filtro', 'Imputaciones', 'Locales', 'Estado', 'Cargó'];
+  const csv = [enc, ...(CP.listaFacturas || []).map(r => [fd(r.fecha), r.periodos || '', r.proveedor, r.tipo === 'nota_credito' ? 'Nota de crédito' : 'Factura', r.numero,
+    numCsv(r.total), numCsv(r.en_filtro), r.imputaciones, r.sucursales || '', r.anulada ? 'Anulada' : 'Vigente', r.cargo || ''])].map(f => f.map(celdaCsv).join(';')).join('\r\n');
+  descargar(`compras_facturas_${hoy()}.csv`, '﻿' + csv, 'text/csv');
+}
+
+// ---- una factura: imputaciones, corregir, anular y agregar
+async function cpFactura(id) {
+  if (CP.factId !== id) { CP.factId = id; CP.editImp = null; CP.editFac = false; }
+  const [f, info, provs] = await Promise.all([rpc('tp_compras_factura', { ...U(), p_id: id }), rpc('tp_compras_info', U()), rpc('tp_proveedores', U())]);
+  CP.info = info; CP.fact = f; CP.provs = provs;
+  const vig = f.imputaciones.filter(i => !i.anulada), nc = f.tipo === 'nota_credito', abiertos = cpMesesAbiertos(info);
+  const fila = i => CP.editImp === i.id && !i.anulada && !i.cerrado ? cpEditarImp(i, info, abiertos) : `<tr class="${i.anulada ? 'anulada' : ''}">
+      <td>${esc(i.sucursal)}</td><td style="white-space:nowrap"><span class="muestra" style="--c:${COLOR_CAT[i.categoria]}"></span>${CAT[i.categoria]}</td>
+      <td style="white-space:nowrap">${esc(i.periodo)}${i.cerrado ? ' <span class="etiqueta" title="Mes cerrado: para corregir, el dueño tiene que reabrirlo">cerrado</span>' : ''}</td>
+      <td class="n">${fmtC(i.monto)}</td>
+      <td class="nota suave" style="font-size:13px">${i.anulada ? `Anulada por ${esc(i.anulado_por || '—')} el ${fc(i.anulado_en)}${i.motivo ? ' · ' + esc(i.motivo) : ''}`
+        : `Cargó ${esc(i.creado_por || '—')} el ${fc(i.creado_en)}${i.reemplaza_id ? ' · corrige una anterior' : ''}`}</td>
+      <td class="acciones nota no-imprimir">${!i.anulada && !i.cerrado ? `<button class="sec chico" onclick="CP.editImp=${i.id};render()">Corregir</button> <button class="peligro chico" onclick="cpAnularImp(${i.id})">Anular</button>` : ''}</td></tr>`;
+  return `<p class="no-imprimir"><a href="#compras/facturas">← Facturas</a></p>
+    <h2>${esc(f.proveedor)} — ${esc(f.numero)} ${nc ? '<span class="etiqueta">Nota de crédito</span>' : ''} ${vig.length ? '' : '<span class="etiqueta">Anulada</span>'}</h2>
+    <p class="suave">Fecha de la factura ${fd(f.fecha)} · cargó ${esc(f.creado_por || '—')} el ${fc(f.creado_en)}${nc ? ' · resta de las compras' : ''}</p>
+    <div class="panel tabla-scroll"><table>
+      <tr><th>Local</th><th>Categoría</th><th>Mes imputado</th><th class="n">Importe</th><th></th><th></th></tr>
+      ${vig.map(fila).join('')}
+      <tr class="total"><td colspan="3">Total ${nc ? 'de la nota de crédito' : 'de la factura'}</td><td class="n">${fmtC(Math.abs(f.total))}</td><td colspan="2"></td></tr>
+      ${f.imputaciones.filter(i => i.anulada).map(fila).join('')}
+    </table></div>
+    <div class="fila no-imprimir">
+      ${f.proveedor_activo ? '<button onclick="cpAgregarA()">+ Agregar imputación</button>' : ''}
+      <button class="sec" onclick="CP.editFac=!CP.editFac;render()">Corregir proveedor, número o fecha</button>
+      ${vig.length && vig.every(i => !i.cerrado) ? `<button class="peligro" onclick="cpAnularFactura(${f.id})">Anular ${nc ? 'nota de crédito' : 'factura'}</button>` : ''}
+    </div>
+    ${CP.editFac ? `<form class="panel fila" style="margin-top:16px" onsubmit="event.preventDefault();cpGuardarFactura(${f.id}, this)">
+      <label>Proveedor<select name="prov">${provs.filter(p => p.activo || p.id === f.proveedor_id).map(p => `<option value="${p.id}" ${p.id === f.proveedor_id ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')}</select></label>
+      <label>Número<input name="numero" value="${esc(f.numero)}" required maxlength="40"></label>
+      <label>Fecha<input type="date" name="fecha" value="${f.fecha}" required></label>
+      <button>Guardar</button><button type="button" class="sec" onclick="CP.editFac=false;render()">Cancelar</button></form>` : ''}
+    <p class="suave" style="font-size:13px">Corregir una imputación la anula y crea una nueva con los datos buenos: el valor anterior queda a la vista, tachado, con quién y por qué la cambió. Los meses cerrados no se pueden tocar.</p>`;
+}
+function cpEditarImp(i, info, abiertos) {
+  return `<tr class="editando"><td colspan="6"><form class="fila" onsubmit="event.preventDefault();cpGuardarImp(${i.id}, this)">
+    <label>Local<select name="suc">${info.sucursales.map(s => `<option value="${s.id}" ${s.id === i.sucursal_id ? 'selected' : ''}>${esc(s.nombre)}</option>`).join('')}</select></label>
+    <label>Categoría<select name="cat">${Object.entries(CAT).map(([v, t]) => `<option value="${v}" ${i.categoria === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+    <label>Mes imputado<select name="mes">${opcionesMes(abiertos, mesDeImp(i))}</select></label>
+    <label>Monto<input name="monto" inputmode="decimal" value="${String(i.monto).replace('.', ',')}" required></label>
+    <label style="flex:1;min-width:180px">Motivo<input name="motivo" placeholder="Por qué se corrige" maxlength="300"></label>
+    <button>Guardar</button><button type="button" class="sec" onclick="CP.editImp=null;render()">Cancelar</button></form></td></tr>`;
+}
+async function cpGuardarImp(id, fm) {
+  try {
+    await rpc('tp_compras_imputacion_editar', { ...U(), p_id: id, p_datos: { sucursal_id: +fm.suc.value, categoria: fm.cat.value, anio: +fm.mes.value.slice(0, 4),
+      mes: +fm.mes.value.slice(5, 7), monto: Math.round(numero(fm.monto.value) * 100) / 100 }, p_motivo: fm.motivo.value });
+    CP.editImp = null; avisar('Listo: la imputación quedó corregida (la anterior queda tachada en la lista).');
+  } catch (e) { avisar(e.message, true); }
+  render();
+}
+async function cpAnularImp(id) {
+  const motivo = prompt('¿Por qué se anula esta imputación? (queda registrado)');
+  if (motivo == null) return;
+  try { await rpc('tp_compras_imputacion_anular', { ...U(), p_id: id, p_motivo: motivo }); avisar('Listo: imputación anulada. Ya no cuenta en el presupuesto.'); }
+  catch (e) { avisar(e.message, true); }
+  render();
+}
+async function cpAnularFactura(id) {
+  const motivo = prompt('Se anulan todas sus imputaciones y deja de contar en los presupuestos.\n¿Por qué se anula? (queda registrado)');
+  if (motivo == null) return;
+  try { await rpc('tp_compras_factura_anular', { ...U(), p_id: id, p_motivo: motivo }); avisar('Listo: anulada.'); }
+  catch (e) { avisar(e.message, true); }
+  render();
+}
+async function cpGuardarFactura(id, fm) {
+  try {
+    await rpc('tp_compras_factura_editar', { ...U(), p_id: id, p_datos: { proveedor_id: +fm.prov.value, numero: fm.numero.value, fecha: fm.fecha.value } });
+    CP.editFac = false; avisar('Listo: datos corregidos.');
+  } catch (e) { avisar(e.message, true); }
+  render();
+}
+function cpAgregarA() {
+  const f = CP.fact;
+  cpCargaNueva({ tipo: f.tipo, proveedor: f.proveedor, numero: f.numero, fecha: f.fecha, existente: f, agregar: true });
+  ir('#compras/cargar');
+}
+
+// ---- proveedores
+async function cpProveedores() {
+  const provs = await rpc('tp_proveedores', U()); CP.provs = provs;
+  return `<div class="panel no-imprimir"><form class="fila" onsubmit="event.preventDefault();cpNuevoProv(this)">
+      <label style="flex:1;min-width:220px">Nuevo proveedor<input name="nombre" placeholder="Nombre" required maxlength="80"></label><button>Crear</button></form>
+      <p class="suave" style="margin-bottom:0;font-size:13px">También se crean solos al cargar una factura con un nombre nuevo. Mayúsculas, acentos y espacios no cuentan: «Soul», «SOUL» y «soul » son el mismo.</p></div>
+    <div class="panel tabla-scroll">
+      <div class="fila" style="justify-content:space-between;align-items:center;margin-bottom:10px"><input type="search" placeholder="Buscar proveedor" aria-label="Buscar proveedor" oninput="cpFiltrarFilas('cp-provs-tabla', this.value)">
+        <span class="suave">${provs.length} proveedor${provs.length === 1 ? '' : 'es'} · primero los más usados</span></div>
+      <table id="cp-provs-tabla"><tr><th>Proveedor</th><th class="n">Facturas</th><th class="n">Total</th><th class="n">Originales</th><th class="n">Genéricos</th><th>Última factura</th><th></th></tr>
+        ${provs.map(p => `<tr data-buscar="${esc(claveTexto(p.nombre))}"><td><a href="#compras/proveedor-${p.id}">${esc(p.nombre)}</a>${p.activo ? '' : ' <span class="etiqueta">de baja</span>'}</td>
+          <td class="n">${p.facturas}</td><td class="n">${fmt(p.total)}</td><td class="n">${fmt(p.original)}</td><td class="n">${fmt(p.generico)}</td><td>${p.ultima ? fd(p.ultima) : '—'}</td>
+          <td class="acciones no-imprimir"><button class="sec chico" onclick="cpRenombrarProv(${p.id}, ${esc(JSON.stringify(p.nombre))})">Renombrar</button>
+            <button class="${p.activo ? 'peligro' : 'sec'} chico" onclick="cpActivoProv(${p.id}, ${!p.activo})">${p.activo ? 'Dar de baja' : 'Reactivar'}</button></td></tr>`).join('')
+          || '<tr><td colspan="7" class="suave">Todavía no hay proveedores.</td></tr>'}
+      </table></div>`;
+}
+async function cpNuevoProv(fm) {
+  try { const r = await rpc('tp_proveedor_guardar', { ...U(), p_id: null, p_nombre: fm.nombre.value }); avisar(r.nuevo ? `Listo: se creó ${r.nombre}.` : `${r.nombre} ya existía (no se duplicó).`); }
+  catch (e) { avisar(e.message, true); }
+  render();
+}
+async function cpRenombrarProv(id, actual) {
+  const n = prompt('Nombre del proveedor', actual);
+  if (n == null || n.trim() === actual) return;
+  try { await rpc('tp_proveedor_guardar', { ...U(), p_id: id, p_nombre: n }); avisar('Listo: nombre cambiado.'); }
+  catch (e) { avisar(e.message, true); }
+  render();
+}
+async function cpActivoProv(id, activo) {
+  if (!activo && !confirm('¿Dar de baja este proveedor? Sus facturas siguen contando; sólo deja de aparecer para cargar nuevas.')) return;
+  try { await rpc('tp_proveedor_activo', { ...U(), p_id: id, p_activo: activo }); avisar(activo ? 'Listo: reactivado.' : 'Listo: dado de baja.'); }
+  catch (e) { avisar(e.message, true); }
+  render();
+}
+async function cpProveedor(id) {
+  const pf = CP.pf;
+  const r = await rpc('tp_proveedor', { ...U(), p_id: id, p_f: { desde: pf.desde || null, hasta: pf.hasta || null, categoria: pf.cat || null } });
+  const p = r.proveedor, maxS = Math.max(0, ...r.por_sucursal.map(s => +s.original + +s.generico)), maxM = Math.max(0, ...r.por_mes.map(m => +m.original + +m.generico));
+  return `<p class="no-imprimir"><a href="#compras/proveedores">← Proveedores</a></p>
+    <h2>${esc(p.nombre)} ${p.activo ? '' : '<span class="etiqueta">de baja</span>'}</h2>
+    <form class="panel fila no-imprimir" onsubmit="event.preventDefault();CP.pf={desde:this.desde.value,hasta:this.hasta.value,cat:this.cat.value};render()">
+      <label>Fecha de factura desde<input type="date" name="desde" value="${pf.desde || ''}"></label><label>hasta<input type="date" name="hasta" value="${pf.hasta || ''}"></label>
+      <label>Categoría<select name="cat">${opcionesCat(pf.cat)}</select></label><button>Ver</button>
+      ${pf.desde || pf.hasta || pf.cat ? '<button type="button" class="sec" onclick="CP.pf={};render()">Todo</button>' : ''}</form>
+    <div class="kpis">
+      <div class="kpi"><small>Total comprado</small><b>${fmt(r.total)}</b></div>
+      <div class="kpi"><small>Originales</small><b>${fmt(r.original)}</b></div>
+      <div class="kpi"><small>Genéricos</small><b>${fmt(r.generico)}</b></div>
+      <div class="kpi"><small>Facturas</small><b>${r.facturas}</b></div>
+    </div>
+    ${cpLeyenda([['Originales', 'var(--c-orig)'], ['Genéricos', 'var(--c-gen)']])}
+    <div>
+      <div class="panel tabla-scroll"><h2>Por local</h2><table><tr><th>Local</th><th class="n">Originales</th><th class="n">Genéricos</th><th></th></tr>
+        ${r.por_sucursal.map(s => `<tr><td>${esc(s.sucursal)}</td><td class="n">${fmt(s.original)}</td><td class="n">${fmt(s.generico)}</td>
+          <td>${cpMiniBarra(+s.original, +s.generico, maxS, `${s.sucursal}\nOriginales: ${fmt(s.original)}\nGenéricos: ${fmt(s.generico)}`)}</td></tr>`).join('') || '<tr><td colspan="4" class="suave">Sin compras.</td></tr>'}</table></div>
+      <div class="panel tabla-scroll"><h2>Por mes imputado</h2><table><tr><th>Mes</th><th class="n">Originales</th><th class="n">Genéricos</th><th></th></tr>
+        ${r.por_mes.map(m => `<tr><td>${esc(m.nombre)}</td><td class="n">${fmt(m.original)}</td><td class="n">${fmt(m.generico)}</td>
+          <td>${cpMiniBarra(+m.original, +m.generico, maxM, `${m.nombre}\nOriginales: ${fmt(m.original)}\nGenéricos: ${fmt(m.generico)}`)}</td></tr>`).join('') || '<tr><td colspan="4" class="suave">Sin compras.</td></tr>'}</table></div>
+    </div>
+    <div class="panel tabla-scroll"><h2>Facturas</h2><table><tr><th>Fecha</th><th>Número</th><th>Mes imputado</th><th>Locales</th><th class="n">Total</th></tr>
+      ${r.lista.map(x => `<tr><td>${fd(x.fecha)}</td><td><a href="#compras/factura-${x.id}">${esc(x.numero)}</a>${x.tipo === 'nota_credito' ? ' <span class="etiqueta">NC</span>' : ''}</td>
+        <td>${esc(x.periodos)}</td><td>${esc(x.sucursales)}</td><td class="n">${fmtC(x.total)}</td></tr>`).join('') || '<tr><td colspan="5" class="suave">Sin facturas vigentes.</td></tr>'}</table></div>`;
+}
+
+// ---- evolución mes a mes y ritmo dentro del mes
+async function cpEvolucion() {
+  const info = await rpc('tp_compras_info', U()); CP.info = info;
+  const e = CP.ev, tope = cpTope(info);
+  e.hasta = e.hasta || tope;
+  e.desde = e.desde || (mesSumar(e.hasta, -5) < info.inicio ? info.inicio : mesSumar(e.hasta, -5));
+  e.ritmo = e.ritmo || (info.hoy >= info.inicio ? info.hoy : info.inicio); e.por = e.por || 'semana'; e.fecha = e.fecha || 'carga';
+  const a = ambitoArgs(e.ambito);
+  const [ev, rit, pres] = await Promise.all([
+    rpc('tp_compras_evolucion', { ...U(), p_desde: e.desde, p_hasta: e.hasta, ...a }),
+    rpc('tp_compras_ritmo', { ...U(), p_anio: +e.ritmo.slice(0, 4), p_mes: +e.ritmo.slice(5, 7), ...a, p_por: e.fecha }),
+    rpc('tp_compras_evolucion', { ...U(), p_desde: e.ritmo, p_hasta: e.ritmo, ...a })]);
+  const filas = ev.map(m => ({ ...m, t: cpSumaCat(m, e.cat) }));
+  const meses = mesesEntre(info.inicio, mesSumar(cpTope(info), 12)), anios = [...new Set(meses.map(k => k.slice(0, 4)))];
+  const catTxt = e.cat ? CAT[e.cat].toLowerCase() : '';
+  const presMes = pres[0] ? cpSumaCat(pres[0], e.cat).presupuesto : 0;
+  const per = cpRitmoPeriodos(rit, e.ritmo, e.por, e.cat);
+  return `<form class="panel fila no-imprimir" onsubmit="event.preventDefault();cpFiltroEv(this)">
+      <label>Desde<select name="desde">${opcionesMes(meses, e.desde)}</select></label>
+      <label>Hasta<select name="hasta">${opcionesMes(meses, e.hasta)}</select></label>
+      <label>Locales<select name="ambito">${opcionesAmbito(info, e.ambito || '')}</select></label>
+      <label>Categoría<select name="cat">${opcionesCat(e.cat)}</select></label>
+      <button>Ver</button>
+      <div class="cats" style="align-self:end">${[['6', 'Últimos 6 meses'], ['12', 'Últimos 12 meses'], ...anios.map(y => ['a' + y, 'Año ' + y])].map(([v, t]) =>
+        `<button type="button" onclick="cpRangoEv('${v}')">${t}</button>`).join('')}</div>
+    </form>
+    <div class="panel"><h2>Presupuesto y compras por mes${catTxt ? ' · ' + catTxt : ''}</h2>
+      ${cpLeyenda([...(e.cat ? [[`Compras ${catTxt}`, COLOR_CAT[e.cat]]] : [['Compras originales', 'var(--c-orig)'], ['Compras genéricos', 'var(--c-gen)']]), ['Presupuesto', 'var(--c-ref)', 'linea']])}
+      ${cpGrafPesos(filas, e.cat)}</div>
+    <div class="grilla">
+      <div class="panel"><h2>Saldo final por mes</h2>${cpGrafSaldo(filas)}
+        <p class="suave" style="margin-bottom:0;font-size:13px">Arriba de la línea: sobró y pasa al mes siguiente. Abajo: se pasó y se descuenta.</p></div>
+      <div class="panel"><h2>Porcentaje del presupuesto usado</h2>
+        ${cpLeyenda(e.cat ? [[CAT[e.cat], COLOR_CAT[e.cat]]] : [['Total', 'var(--texto)'], ['Originales', 'var(--c-orig)'], ['Genéricos', 'var(--c-gen)']])}${cpGrafPct(filas, e.cat)}</div>
+    </div>
+    <div class="panel">${cpTablaEvol(filas, e.cat)}</div>
+    <div class="panel"><h2>Avance dentro del mes</h2>
+      <div class="fila no-imprimir" style="margin-bottom:14px">
+        <label>Mes<select onchange="CP.ev.ritmo=this.value;render()">${opcionesMes(meses, e.ritmo)}</select></label>
+        <label>Agrupar<select onchange="CP.ev.por=this.value;render()"><option value="semana" ${e.por === 'semana' ? 'selected' : ''}>Por semana</option><option value="dia" ${e.por === 'dia' ? 'selected' : ''}>Por día</option></select></label>
+        <label>Según<select onchange="CP.ev.fecha=this.value;render()"><option value="carga" ${e.fecha === 'carga' ? 'selected' : ''}>Fecha de carga</option><option value="factura" ${e.fecha === 'factura' ? 'selected' : ''}>Fecha de la factura</option></select></label>
+      </div>
+      <p class="suave" style="font-size:13px;margin-top:0">Compras imputadas a ${mesTxt(e.ritmo)}${catTxt ? ` (${catTxt})` : ''}, acumuladas ${e.fecha === 'factura' ? 'según la fecha de cada factura' : 'según el día en que se cargaron'}, contra el presupuesto del mes (${fmt(presMes)}).</p>
+      ${per.length ? `${cpLeyenda([...(e.cat ? [[`Acumulado ${catTxt}`, COLOR_CAT[e.cat]]] : [['Acumulado originales', 'var(--c-orig)'], ['Acumulado genéricos', 'var(--c-gen)']]), ['Presupuesto del mes', 'var(--c-ref)', 'linea']])}
+        ${cpGrafRitmo(per, presMes)}
+        <div class="tabla-scroll"><table><tr><th>Período</th><th class="n">Comprado</th><th class="n">Acumulado</th><th class="n">% del presupuesto</th></tr>
+          ${per.map(p => `<tr><td>${esc(p.et)}</td><td class="n">${fmt(p.v)}</td><td class="n">${fmt(p.ac)}</td><td class="n">${presMes > 0 ? pct1(p.ac / presMes * 100) : '—'}</td></tr>`).join('')}</table></div>`
+      : '<p class="suave">Todavía no hay compras imputadas a ese mes.</p>'}
+    </div>`;
+}
+function cpFiltroEv(fm) {
+  let d = fm.desde.value, h = fm.hasta.value; if (d > h) [d, h] = [h, d];
+  Object.assign(CP.ev, { desde: d, hasta: h, ambito: fm.ambito.value, cat: fm.cat.value }); render();
+}
+function cpRangoEv(v) {
+  const info = CP.info, tope = cpTope(info), e = CP.ev;
+  if (v[0] === 'a') { e.desde = v.slice(1) + '-01' < info.inicio ? info.inicio : v.slice(1) + '-01'; e.hasta = v.slice(1) + '-12' > mesSumar(tope, 12) ? mesSumar(tope, 12) : v.slice(1) + '-12'; }
+  else { e.hasta = tope; e.desde = mesSumar(tope, -(+v - 1)) < info.inicio ? info.inicio : mesSumar(tope, -(+v - 1)); }
+  render();
+}
+// Días → semanas del mes (1 a 7, 8 a 14…) o días, con lo acumulado. Las facturas con fecha fuera del mes van aparte.
+function cpRitmoPeriodos(dias, mes, por, cat) {
+  const fin = new Date(Date.UTC(+mes.slice(0, 4), +mes.slice(5, 7), 0)).getUTCDate(), g = new Map();
+  const valor = d => cat === 'original' ? [+d.original, 0] : cat === 'generico' ? [0, +d.generico] : [+d.original, +d.generico];
+  if (por === 'semana') for (let s = 1; s <= Math.ceil(fin / 7); s++) g.set('1' + s, { et: `Semana ${s} · del ${(s - 1) * 7 + 1} al ${Math.min(s * 7, fin)}`, o: 0, g: 0 });
+  dias.forEach(d => {
+    const m = d.dia.slice(0, 7);
+    const [k, et] = m < mes ? ['0', 'Antes del mes'] : m > mes ? ['9', 'Después del mes'] : por === 'dia' ? ['1' + d.dia, ddmm(d.dia)]
+      : ['1' + Math.ceil(+d.dia.slice(8, 10) / 7), null];
+    const x = g.get(k) || { et, o: 0, g: 0 }, [o, gg] = valor(d);
+    x.o += o; x.g += gg; g.set(k, x);
+  });
+  let ao = 0, ag = 0;
+  return [...g.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([, x]) => { ao += x.o; ag += x.g; return { et: x.et, v: x.o + x.g, ao, ag, ac: ao + ag }; });
+}
+function cpTablaEvol(filas, cat) {
+  return `<div class="tabla-scroll"><table><tr><th>Mes</th><th class="n">Presupuesto base</th><th class="n">Saldo anterior</th><th class="n">Presupuesto</th><th class="n">Compras</th><th class="n">Utilizado</th><th class="n">Saldo final</th>${cat ? '' : '<th class="n">Orig.</th><th class="n">Gen.</th>'}</tr>
+    ${filas.map(f => `<tr><td style="white-space:nowrap">${esc(f.nombre)}${f.cerrado ? ' <span class="etiqueta">cerrado</span>' : ''}</td><td class="n">${fmt(f.t.base)}</td><td class="n">${fmtSigno(f.t.saldo_inicial)}</td>
+      <td class="n">${fmt(f.t.presupuesto)}</td><td class="n">${fmt(f.t.compras)}</td><td class="n"><span class="estado ${f.t.estado}" title="${ESTADO[f.t.estado][1]}">${ESTADO[f.t.estado][0]}</span> ${pct1(f.t.pct)}</td>
+      <td class="n ${+f.t.saldo < 0 ? 'mal' : ''}">${fmtSigno(f.t.saldo)}</td>${cat ? '' : `<td class="n">${pct1(f.original.pct)}</td><td class="n">${pct1(f.generico.pct)}</td>`}</tr>`).join('')
+      || '<tr><td colspan="9" class="suave">Sin meses en ese rango.</td></tr>'}</table></div>`;
+}
+const cpTipMes = (f, cat) => `${f.nombre}${f.cerrado ? ' (cerrado)' : ''}\nPresupuesto: ${fmt(f.t.presupuesto)}\nCompras: ${fmt(f.t.compras)} · ${pct1(f.t.pct)}` +
+  (cat ? '' : `\n  Originales: ${fmt(f.original.compras)} (${pct1(f.original.pct)})\n  Genéricos: ${fmt(f.generico.compras)} (${pct1(f.generico.pct)})`) + `\nSaldo final: ${fmtSigno(f.t.saldo)}`;
+// Compras por mes (apiladas: originales abajo, genéricos arriba) y el presupuesto como raya punteada
+function cpGrafPesos(filas, cat) {
+  if (!filas.length) return '<p class="suave">Sin meses en ese rango.</p>';
+  const n = filas.length, W = Math.max(cpAncho(), 100 + n * 56), H = 260, x0 = 76, x1 = W - 10, top = 14, base = H - 32;
+  const eje = cpEje(0, Math.max(1, ...filas.flatMap(f => [+f.t.presupuesto, +f.t.compras])));
+  const y = v => base - (Math.max(0, v) - eje.min) / (eje.max - eje.min) * (base - top);
+  const paso = (x1 - x0) / n, b = Math.min(34, paso * .45);
+  let s = cpGrilla(eje, y, x0, x1, fmtM);
+  filas.forEach((f, i) => {
+    const cx = x0 + paso * (i + .5), x = cx - b / 2;
+    const o = cat === 'generico' ? 0 : Math.max(0, +f.original.compras), g = cat === 'original' ? 0 : Math.max(0, +f.generico.compras);
+    const ho = base - y(o), hg = base - y(g);
+    if (ho >= .5 && hg >= .5) s += `<rect x="${x.toFixed(1)}" y="${(base - ho).toFixed(1)}" width="${b.toFixed(1)}" height="${ho.toFixed(1)}" fill="var(--c-orig)"/>` + rectV(x, base - ho - 2, b, hg - 2, 'var(--c-gen)');
+    else s += rectV(x, base, b, ho, 'var(--c-orig)') + rectV(x, base, b, hg, 'var(--c-gen)');
+    if (+f.t.presupuesto > 0) s += `<line x1="${(cx - paso * .38).toFixed(1)}" x2="${(cx + paso * .38).toFixed(1)}" y1="${y(+f.t.presupuesto).toFixed(1)}" y2="${y(+f.t.presupuesto).toFixed(1)}" stroke="var(--c-ref)" stroke-width="2" stroke-dasharray="6 4"/>`;
+    s += `<text x="${cx.toFixed(1)}" y="${H - 10}" text-anchor="middle">${mesCorto(f.mes)}</text>`;
+    s += `<rect x="${(cx - paso / 2).toFixed(1)}" y="${top}" width="${paso.toFixed(1)}" height="${base - top}" fill="transparent" data-tip="${esc(cpTipMes(f, cat))}"/>`;
+  });
+  return cpSvg(W, H, 'Presupuesto y compras por mes', s);
+}
+// Saldo final: barras que suben (sobró) o bajan (se pasó) desde el cero
+function cpGrafSaldo(filas) {
+  if (!filas.length) return '<p class="suave">Sin meses en ese rango.</p>';
+  const n = filas.length, W = Math.max(cpAncho(true), 90 + n * 48), H = 230, x0 = 76, x1 = W - 10, top = 22, base = H - 30;
+  const vals = filas.map(f => +f.t.saldo), eje = cpEje(Math.min(0, ...vals), Math.max(0, ...vals));
+  const y = v => base - (v - eje.min) / (eje.max - eje.min) * (base - top), paso = (x1 - x0) / n, b = Math.min(30, paso * .45);
+  let s = cpGrilla(eje, y, x0, x1, fmtM);
+  filas.forEach((f, i) => {
+    const cx = x0 + paso * (i + .5), v = +f.t.saldo;
+    s += rectV(cx - b / 2, y(0), b, y(0) - y(v), 'var(--c-ref)');
+    if (n <= 12 && Math.abs(v) >= .5) s += `<text class="valor" x="${cx.toFixed(1)}" y="${(v >= 0 ? y(v) - 6 : y(v) + 15).toFixed(1)}" text-anchor="middle">${fmtM(v)}</text>`;
+    s += `<text x="${cx.toFixed(1)}" y="${H - 8}" text-anchor="middle">${mesCorto(f.mes)}</text>`;
+    s += `<rect x="${(cx - paso / 2).toFixed(1)}" y="${top}" width="${paso.toFixed(1)}" height="${base - top}" fill="transparent" data-tip="${esc(`${f.nombre}\nSaldo final: ${fmtSigno(v)}\n${v < 0 ? 'Se descuenta del mes siguiente' : 'Pasa al mes siguiente'}`)}"/>`;
+  });
+  return cpSvg(W, H, 'Saldo final por mes', s);
+}
+// % usado por mes: líneas (total, originales, genéricos) contra las referencias de 80 % y 100 %
+function cpGrafPct(filas, cat) {
+  if (!filas.length) return '<p class="suave">Sin meses en ese rango.</p>';
+  const series = cat ? [[CAT[cat], COLOR_CAT[cat], f => f[cat].pct]]
+    : [['Total', 'var(--texto)', f => f.t.pct], ['Originales', 'var(--c-orig)', f => f.original.pct], ['Genéricos', 'var(--c-gen)', f => f.generico.pct]];
+  const n = filas.length, W = Math.max(cpAncho(true), 90 + n * 48), H = 230, x0 = 52, x1 = W - 14, top = 14, base = H - 30;
+  const eje = cpEje(0, Math.max(100, ...filas.flatMap(f => series.map(s => +s[2](f) || 0))) * 1.05);
+  const y = v => base - (v - eje.min) / (eje.max - eje.min) * (base - top), paso = (x1 - x0) / n, X = i => x0 + paso * (i + .5);
+  let s = cpGrilla(eje, y, x0, x1, v => v + '%');
+  [[100, '6 4'], [80, '2 4']].forEach(([v, d]) => { s += `<line x1="${x0}" x2="${x1}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--c-ref)" stroke-width="1.5" stroke-dasharray="${d}"/>`; });
+  series.forEach(([, color, f]) => {
+    let tramo = [];
+    const cerrar = () => { if (tramo.length > 1) s += `<polyline points="${tramo.join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`; tramo = []; };
+    filas.forEach((m, i) => { const v = f(m); if (v == null) cerrar(); else tramo.push(`${X(i).toFixed(1)},${y(+v).toFixed(1)}`); });
+    cerrar();
+    filas.forEach((m, i) => { const v = f(m); if (v != null) s += `<circle cx="${X(i).toFixed(1)}" cy="${y(+v).toFixed(1)}" r="4" fill="${color}" stroke="var(--panel)" stroke-width="2"/>`; });
+  });
+  filas.forEach((m, i) => {
+    s += `<text x="${X(i).toFixed(1)}" y="${H - 8}" text-anchor="middle">${mesCorto(m.mes)}</text>`;
+    s += `<rect x="${(X(i) - paso / 2).toFixed(1)}" y="${top}" width="${paso.toFixed(1)}" height="${base - top}" fill="transparent" data-tip="${esc(m.nombre + '\n' + series.map(([t, , f]) => `${t}: ${pct1(f(m))}`).join('\n'))}"/>`;
+  });
+  return cpSvg(W, H, 'Porcentaje del presupuesto usado por mes', s);
+}
+// Ritmo del mes: lo acumulado en cada semana o día contra el presupuesto, con el % arriba
+function cpGrafRitmo(per, pres) {
+  const n = per.length, W = Math.max(cpAncho(), 100 + n * 48), H = 250, x0 = 76, x1 = W - 10, top = 20, base = H - 34;
+  const eje = cpEje(0, Math.max(1, pres, ...per.map(p => p.ac)));
+  const y = v => base - (Math.max(0, v) - eje.min) / (eje.max - eje.min) * (base - top), paso = (x1 - x0) / n, b = Math.min(34, paso * .5);
+  let s = cpGrilla(eje, y, x0, x1, fmtM);
+  per.forEach((p, i) => {
+    const cx = x0 + paso * (i + .5), x = cx - b / 2, ho = base - y(p.ao), hg = base - y(p.ag);
+    if (ho >= .5 && hg >= .5) s += `<rect x="${x.toFixed(1)}" y="${(base - ho).toFixed(1)}" width="${b.toFixed(1)}" height="${ho.toFixed(1)}" fill="var(--c-orig)"/>` + rectV(x, base - ho - 2, b, hg - 2, 'var(--c-gen)');
+    else s += rectV(x, base, b, ho, 'var(--c-orig)') + rectV(x, base, b, hg, 'var(--c-gen)');
+    if (pres > 0 && p.ac > 0) s += `<text class="valor" x="${cx.toFixed(1)}" y="${(y(p.ac) - 6).toFixed(1)}" text-anchor="middle">${pct1(p.ac / pres * 100)}</text>`;
+    s += `<text x="${cx.toFixed(1)}" y="${H - 10}" text-anchor="middle">${esc(p.et.split(' · ')[0])}</text>`;
+    s += `<rect x="${(cx - paso / 2).toFixed(1)}" y="${top}" width="${paso.toFixed(1)}" height="${base - top}" fill="transparent" data-tip="${esc(`${p.et}\nComprado: ${fmt(p.v)}\nAcumulado: ${fmt(p.ac)}${pres > 0 ? `\n${pct1(p.ac / pres * 100)} del presupuesto` : ''}`)}"/>`;
+  });
+  if (pres > 0) s += `<line x1="${x0}" x2="${x1}" y1="${y(pres).toFixed(1)}" y2="${y(pres).toFixed(1)}" stroke="var(--c-ref)" stroke-width="2" stroke-dasharray="6 4"/>`;
+  return cpSvg(W, H, 'Compras acumuladas dentro del mes', s);
+}
+
+// ---- reportes por proveedor y por local
+async function cpReportes() {
+  const info = await rpc('tp_compras_info', U()); CP.info = info;
+  const e = CP.rep, meses = mesesEntre(info.inicio, mesSumar(cpTope(info), 12));
+  e.hasta = e.hasta || cpTope(info); e.desde = e.desde || e.hasta;
+  const r = await rpc('tp_compras_reporte', { ...U(), p_desde: e.desde, p_hasta: e.hasta, ...ambitoArgs(e.ambito), p_cat: e.cat || null });
+  CP.reporte = r;
+  const tot = +r.total, top = r.proveedores.slice(0, 12), maxP = Math.max(0, ...top.map(p => Math.max(0, +p.original) + Math.max(0, +p.generico)));
+  const maxS = Math.max(0, ...r.sucursales.map(s => Math.max(0, +s.original) + Math.max(0, +s.generico)));
+  const part = v => tot > 0 ? pct1(v / tot * 100) : '—';
+  // Evolución mensual de los 6 que más compraron (el resto junto)
+  const top6 = r.proveedores.slice(0, 6), mesesR = [...new Set(r.meses.map(m => m.mes))].sort();
+  const celda = (pid, k) => r.meses.filter(m => m.mes === k && (pid == null ? !top6.some(p => p.id === m.proveedor_id) : m.proveedor_id === pid)).reduce((s, m) => s + +m.total, 0);
+  return `<form class="panel fila no-imprimir" onsubmit="event.preventDefault();cpFiltroRep(this)">
+      <label>Desde (mes imputado)<select name="desde">${opcionesMes(meses, e.desde)}</select></label>
+      <label>Hasta<select name="hasta">${opcionesMes(meses, e.hasta)}</select></label>
+      <label>Locales<select name="ambito">${opcionesAmbito(info, e.ambito || '')}</select></label>
+      <label>Categoría<select name="cat">${opcionesCat(e.cat)}</select></label>
+      <button>Ver</button></form>
+    <div class="kpis">
+      <div class="kpi"><small>Total comprado</small><b>${fmt(r.total)}</b><span class="var suave">${esc(mesTxt(r.desde))}${r.hasta !== r.desde ? ' a ' + esc(mesTxt(r.hasta)) : ''}</span></div>
+      <div class="kpi"><small>Originales</small><b>${fmt(r.original)}</b><span class="var suave">${part(r.original)}</span></div>
+      <div class="kpi"><small>Genéricos</small><b>${fmt(r.generico)}</b><span class="var suave">${part(r.generico)}</span></div>
+      <div class="kpi"><small>Facturas</small><b>${r.facturas}</b><span class="var suave">${r.proveedores.length} proveedor${r.proveedores.length === 1 ? '' : 'es'}</span></div>
+    </div>
+    <div class="panel"><div class="fila" style="justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="margin:0">Proveedores con más compras</h2>
+      <button type="button" class="sec chico no-imprimir" onclick="cpExcelReporte()">Descargar Excel (CSV)</button></div>
+      ${cpLeyenda([['Originales', 'var(--c-orig)'], ['Genéricos', 'var(--c-gen)']])}
+      ${top.map(p => `<a class="ranking-fila" href="#compras/proveedor-${p.id}" data-tip="${esc(`${p.nombre}\nTotal: ${fmt(p.total)} (${part(p.total)} del total)\nOriginales: ${fmt(p.original)}\nGenéricos: ${fmt(p.generico)}\nFacturas: ${p.facturas}`)}">
+        <span>${esc(p.nombre)}</span>${cpMiniBarra(+p.original, +p.generico, maxP, '').replace(' data-tip=""', '')}<span class="ranking-dato">${fmtM(p.total)} · ${part(p.total)}</span></a>`).join('')
+        || '<p class="suave">No hay compras en ese período.</p>'}
+      ${r.proveedores.length > 12 ? `<p class="suave" style="font-size:13px">Se muestran los 12 primeros; la tabla tiene los ${r.proveedores.length}.</p>` : ''}
+    </div>
+    <div class="panel tabla-scroll"><table><tr><th>Proveedor</th><th class="n">Total</th><th class="n">Originales</th><th class="n">Genéricos</th><th class="n">Participación</th><th class="n">Facturas</th></tr>
+      ${r.proveedores.map(p => `<tr><td><a href="#compras/proveedor-${p.id}">${esc(p.nombre)}</a></td><td class="n">${fmt(p.total)}</td><td class="n">${fmt(p.original)}</td>
+        <td class="n">${fmt(p.generico)}</td><td class="n">${part(p.total)}</td><td class="n">${p.facturas}</td></tr>`).join('')}
+      ${r.proveedores.length ? `<tr class="total"><td>Total</td><td class="n">${fmt(r.total)}</td><td class="n">${fmt(r.original)}</td><td class="n">${fmt(r.generico)}</td><td class="n">${tot > 0 ? '100,0 %' : '—'}</td><td class="n">${r.facturas}</td></tr>` : ''}
+    </table></div>
+    <div>
+      <div class="panel tabla-scroll"><h2>Por local</h2><table><tr><th>Local</th><th class="n">Originales</th><th class="n">Genéricos</th><th class="n">Total</th><th></th></tr>
+        ${r.sucursales.map(s => `<tr><td>${esc(s.sucursal)} <span class="suave">${esc(s.grupo || '')}</span></td><td class="n">${fmt(s.original)}</td><td class="n">${fmt(s.generico)}</td>
+          <td class="n">${fmt(+s.original + +s.generico)}</td><td>${cpMiniBarra(+s.original, +s.generico, maxS, `${s.sucursal}\nOriginales: ${fmt(s.original)}\nGenéricos: ${fmt(s.generico)}\nFacturas: ${s.facturas}`)}</td></tr>`).join('')
+          || '<tr><td colspan="5" class="suave">Sin compras.</td></tr>'}</table></div>
+      <div class="panel tabla-scroll"><h2>Por grupo</h2><table><tr><th>Grupo</th><th class="n">Originales</th><th class="n">Genéricos</th><th class="n">Total</th></tr>
+        ${r.grupos.map(g => `<tr><td>${esc(g.grupo)}</td><td class="n">${fmt(g.original)}</td><td class="n">${fmt(g.generico)}</td><td class="n">${fmt(+g.original + +g.generico)}</td></tr>`).join('')
+          || '<tr><td colspan="4" class="suave">Sin compras.</td></tr>'}</table></div>
+    </div>
+    ${mesesR.length ? `<div class="panel tabla-scroll"><h2>Evolución mensual por proveedor</h2><table><tr><th>Proveedor</th>${mesesR.map(k => `<th class="n">${mesCorto(k)}</th>`).join('')}</tr>
+      ${top6.map(p => `<tr><td>${esc(p.nombre)}</td>${mesesR.map(k => `<td class="n">${fmt(celda(p.id, k))}</td>`).join('')}</tr>`).join('')}
+      ${r.proveedores.length > 6 ? `<tr><td class="suave">Los demás</td>${mesesR.map(k => `<td class="n">${fmt(celda(null, k))}</td>`).join('')}</tr>` : ''}
+      <tr class="total"><td>Total</td>${mesesR.map(k => `<td class="n">${fmt(r.meses.filter(m => m.mes === k).reduce((s, m) => s + +m.total, 0))}</td>`).join('')}</tr></table></div>` : ''}`;
+}
+function cpFiltroRep(fm) {
+  let d = fm.desde.value, h = fm.hasta.value; if (d > h) [d, h] = [h, d];
+  CP.rep = { desde: d, hasta: h, ambito: fm.ambito.value, cat: fm.cat.value }; render();
+}
+function cpExcelReporte() {
+  const r = CP.reporte; if (!r) return;
+  const tot = +r.total, enc = ['Proveedor', 'Total', 'Originales', 'Genéricos', 'Participación (%)', 'Facturas'];
+  const csv = [enc, ...r.proveedores.map(p => [p.nombre, numCsv(p.total), numCsv(p.original), numCsv(p.generico), tot > 0 ? numCsv(p.total / tot * 100) : '', p.facturas])]
+    .map(f => f.map(celdaCsv).join(';')).join('\r\n');
+  descargar(`compras_proveedores_${r.desde}_${r.hasta}.csv`, '﻿' + csv, 'text/csv');
+}
+
+// ---- configuración (dueño y superadmin): porcentajes, mes de inicio, grupos y cierres
+async function cpConfig() {
+  const info = await rpc('tp_compras_info', U()); CP.info = info;
+  const opInicio = mesesEntre(mesSumar(info.hoy, -12), mesSumar(info.hoy, 12));
+  return `<div class="grilla">
+    <form class="panel" onsubmit="event.preventDefault();cpGuardarCfg({pct_original:this.po.value,pct_generico:this.pg.value},'Porcentajes guardados.')">
+      <h2>Porcentajes del presupuesto</h2>
+      <div class="fila"><label>Originales (%)<input name="po" type="number" min="0.01" max="100" step="0.01" value="${info.pct_original}" required></label>
+        <label>Genéricos (%)<input name="pg" type="number" min="0.01" max="100" step="0.01" value="${info.pct_generico}" required></label><button>Guardar</button></div>
+      <p class="suave" style="margin-bottom:0;font-size:13px">Presupuesto base = ventas proyectadas de la categoría × este porcentaje. Cambiarlo recalcula los meses abiertos (y lo que arrastran); los meses cerrados conservan el porcentaje con que se cerraron.</p></form>
+    <form class="panel" onsubmit="event.preventDefault();cpGuardarCfg({inicio:this.inicio.value},'Mes de inicio guardado.')">
+      <h2>Mes de inicio</h2>
+      <div class="fila"><label>Primer mes del módulo<select name="inicio" ${info.cerrados.length ? 'disabled' : ''}>${opcionesMes(opInicio.includes(info.inicio) ? opInicio : [info.inicio, ...opInicio], info.inicio)}</select></label>
+        ${info.cerrados.length ? '' : '<button>Guardar</button>'}</div>
+      <p class="suave" style="margin-bottom:0;font-size:13px">El primer mes arranca sin saldo anterior y no se pueden cargar compras de meses anteriores. ${info.cerrados.length ? 'Ya hay meses cerrados: no se puede cambiar.' : ''}</p></form>
+  </div>
+  <div class="panel"><h2>Grupos de locales</h2>
+    <div class="grilla" style="margin-bottom:0">
+      <div class="tabla-scroll"><table><tr><th>Local</th><th>Grupo</th></tr>
+        ${info.sucursales.map(s => `<tr><td>${esc(s.nombre)}</td><td><select onchange="cpGuardarCfg({asignar:[{sucursal_id:${s.id},grupo_id:this.value}]},'Grupo cambiado.')">
+          <option value="">Sin grupo</option>${info.grupos.map(g => `<option value="${g.id}" ${s.grupo_id === g.id ? 'selected' : ''}>${esc(g.nombre)}</option>`).join('')}</select></td></tr>`).join('')}</table></div>
+      <div>
+        ${info.grupos.map(g => `<div class="fila" style="margin-bottom:8px;align-items:center"><input value="${esc(g.nombre)}" maxlength="40" aria-label="Nombre del grupo"
+          onchange="cpGuardarCfg({grupos:[{id:${g.id},nombre:this.value}]},'Grupo renombrado.')"><span class="suave">${g.sucursales.length} local${g.sucursales.length === 1 ? '' : 'es'}</span>
+          ${g.sucursales.length ? '' : `<button class="peligro chico" onclick="cpGuardarCfg({borrar_grupo:${g.id}},'Grupo borrado.')">Borrar</button>`}</div>`).join('')}
+        <form class="fila" onsubmit="event.preventDefault();cpGuardarCfg({nuevo_grupo:this.n.value},'Grupo creado.')"><label>Grupo nuevo<input name="n" maxlength="40" required></label><button class="sec">Crear</button></form>
+      </div>
+    </div>
+    <p class="suave" style="margin-bottom:0;font-size:13px">Los grupos sirven para ver juntos varios locales (Resumen, Evolución, Reportes y la IA). Un local está en un solo grupo, así que nada se suma dos veces.</p></div>
+  <div class="panel tabla-scroll"><h2>Cierres</h2><table><tr><th>Mes</th><th>Estado</th><th></th></tr>
+    ${mesesEntre(info.inicio, info.hoy > info.inicio ? info.hoy : info.inicio).reverse().map(k => `<tr><td>${mesTxt(k)}</td>
+      <td>${info.cerrados.includes(k) ? '<span class="etiqueta rosa">Cerrado</span>' : k < info.hoy ? '<span class="alerta">Terminó y está abierto</span>' : 'En curso'}</td>
+      <td><a href="#compras" onclick="CP.mes='${k}'">Ver${k < info.hoy && !info.cerrados.includes(k) ? ' y cerrar' : ''}</a></td></tr>`).join('')}</table>
+    <p class="suave" style="margin-bottom:0;font-size:13px">Se cierra en orden (primero el mes más viejo) y se reabre empezando por el último cerrado, con motivo.</p></div>`;
+}
+async function cpGuardarCfg(datos, ok) {
+  try { await rpc('tp_compras_config', { ...U(), p_datos: datos }); avisar(ok); }
+  catch (e) { avisar(e.message, true); }
+  render();
+}
+
+tipIniciar();
 iniciar();
 </script>
 </body>
