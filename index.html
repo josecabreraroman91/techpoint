@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ventas · TechPoint v31</title>
+<title>Ventas · TechPoint v32</title>
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Crect x='12' y='40' width='24' height='7' fill='%23ff1a8c'/%3E%3Crect x='42' y='36' width='11' height='11' fill='%232b3fe0'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -330,7 +330,7 @@ tr.editando td { background: var(--panel-2); }
    Todo lo que mueve plata o stock lo hace la base (todo o nada).
    Por ahora sin pantalla de login: se elige "con qué usuario entrar" arriba a la derecha.
    ===================================================================== */
-const VERSION = 'v31';
+const VERSION = 'v32';
 // Base propia del dueño (Supabase, organización TechPoint) desde el 24/10/2026. Antes: orbe-clientes de José.
 const NUBE = { url: 'https://ihmnfcmkvckhueowkzet.supabase.co', key: 'sb_publishable_fltCybLk39k92dPRant28A_FT8pGJRL' };
 const MEDIOS = ['Efectivo', 'Débito', 'Crédito', 'Transferencia', 'Mercado Pago'];
@@ -1457,8 +1457,7 @@ async function vCaja() {
         <h3>Control con el cierre Z (fiscal)</h3>
         <table class="cuadro-z">
           <tr><td>Ventas sin efectivo <span class="suave">(todo menos efectivo)</span></td><td class="n"><b>${fmt(sinEfectivo(x))}</b></td></tr>
-          ${x.para_z == null ? '' : `<tr><td>− Transferencias</td><td class="n">− ${fmt(x.transferencias)}</td></tr>
-          <tr><td>− Ventas con factura <span class="suave">(marcaron «Sí», sin efectivo ni transferencia)</span></td><td class="n">− ${fmt(x.con_factura)}</td></tr>
+          ${x.para_z == null ? '' : `<tr><td>− Ventas con factura <span class="suave">(marcaron «Sí», sin contar el efectivo)</span></td><td class="n">− ${fmt(x.con_factura)}</td></tr>
           <tr class="total"><td>Tiene que dar el Z</td><td class="n"><b>${fmt(paraZ(x))}</b></td></tr>`}
           <tr><td><label for="cierre-z">Total cierre Z</label> <span class="suave">(lo escribe el vendedor)</span></td>
             <td class="n"><input id="cierre-z" type="number" min="0" step="0.01" inputmode="decimal" placeholder="$" style="width:130px;text-align:right"
@@ -1540,7 +1539,7 @@ async function vAbrirCaja() {
 }
 // Control con el cierre Z de la fiscal (018): ventas sin efectivo contra el total Z que escribe el vendedor
 const sinEfectivo = x => (x.medios || []).filter(m => m.medio !== 'Efectivo').reduce((s, m) => s + +m.total, 0);
-// Lo que tiene que dar el Z (022): sin efectivo, menos transferencias y ventas con factura. Sin el SQL 022, como antes.
+// Lo que tiene que dar el Z (022, 028): sin efectivo, menos ventas con factura. Sin el SQL 022, como antes.
 const paraZ = x => x.para_z == null ? sinEfectivo(x) : +x.para_z;
 function difZ(z, sinEf) {
   if (z == null || z === '') return '<span class="suave">—</span>';
@@ -1613,7 +1612,7 @@ async function enviarRespaldo(cajaId) {
       ...(x.vendedores && x.vendedores.length ? ['Por vendedor:', ...x.vendedores.map(v => `  ${v.vendedor}: ${v.ventas} ventas · ${fmt(v.total)} · ${v.hydros} hydrogel`), ''] : []),
       `Apertura ${fmt(c.apertura)} + efectivo ${fmt(x.efectivo)} + ingresos ${fmt(x.ingresos)} − egresos ${fmt(x.egresos)}`,
       `Esperado ${fmt(x.esperado)} · contado ${fmt(c.cierre_contado)} · diferencia ${fmt(x.diferencia)}`,
-      `Ventas sin efectivo ${fmt(sinEfectivo(x))}` + (x.para_z == null ? '' : ` − transferencias ${fmt(x.transferencias)} − con factura ${fmt(x.con_factura)} = tiene que dar el Z ${fmt(paraZ(x))}`),
+      `Ventas sin efectivo ${fmt(sinEfectivo(x))}` + (x.para_z == null ? '' : ` − con factura ${fmt(x.con_factura)} = tiene que dar el Z ${fmt(paraZ(x))}`),
       `Cierre Z ${c.cierre_z == null ? 'no cargado' : fmt(c.cierre_z) + ' · diferencia ' + fmt(+c.cierre_z - paraZ(x))}`,
       `Originales: ${k.original.unidades} u. (${fmt(k.original.importe)}) · Genéricos: ${k.generico.unidades} u. (${fmt(k.generico.importe)})` +
         (k.sin_definir.unidades ? ` · Sin definir: ${k.sin_definir.unidades} u.` : ''),
