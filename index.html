@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>Ventas · TechPoint v43</title>
+<title>Ventas · TechPoint v44</title>
 <meta name="theme-color" content="#030305">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Crect x='12' y='40' width='24' height='7' fill='%23ff1a8c'/%3E%3Crect x='42' y='36' width='11' height='11' fill='%232b3fe0'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -633,7 +633,7 @@ body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-ins
    Todo lo que mueve plata o stock lo hace la base (todo o nada).
    Por ahora sin pantalla de login: se elige "con qué usuario entrar" arriba a la derecha.
    ===================================================================== */
-const VERSION = 'v43';
+const VERSION = 'v44';
 // Base propia del dueño (Supabase, organización TechPoint) desde el 24/10/2026. Antes: orbe-clientes de José.
 const NUBE = { url: 'https://ihmnfcmkvckhueowkzet.supabase.co', key: 'sb_publishable_fltCybLk39k92dPRant28A_FT8pGJRL' };
 const MEDIOS = ['Efectivo', 'Débito', 'Crédito', 'Transferencia', 'Mercado Pago'];
@@ -670,7 +670,9 @@ const CLASES = { original: 'Original', generico: 'Genérico' };
 const tilde = clase => clase === 'original' ? '<span class="tilde" title="Original" aria-label="Original">✓</span>' : '';
 // Producto «Diferencia por devolución» (006): el vendedor escribe el monto y se suma a la venta (sin descuento en efectivo)
 const COD_DIFERENCIA = 'DIF-DEV';
-const COD_DIF_CAJA = 'DIF-CAJA';        // «Diferencia de caja» (019): el encargado o más le pone un monto, también negativo
+const COD_DIF_CAJA = 'DIF-CAJA';        // «Diferencia de caja (restar dinero a la caja)» (019, nombre 029): el encargado o más le pone un monto, también negativo
+const COD_AJUSTE = 'AJ-RED';            // «Ajuste por redondeo» (029): lo carga cualquiera, monto en blanco, sólo suma, sin descuento en efectivo
+const conPrecioLibre = c => c === COD_DIFERENCIA || c === COD_AJUSTE;   // el precio lo pone el que vende: no se toca en masa
 const COD_CHIP = 'CHIP';                // el chip Personal / Movistar / Claro (025): va sin descuento en efectivo
 // Fundas, flip covers y protectores (vidrio / hydrogel): al vender se carga la marca y el modelo del celular
 const PIDE_MODELO = ['Funda', 'Flip cover', 'Vidrio templado'];
@@ -1403,7 +1405,7 @@ function pintarResultados() {
 }
 function agregar(i) {
   const p = V.resultados[i];
-  if (p.codigo === COD_DIFERENCIA) return agregarDiferencia(p);
+  if (conPrecioLibre(p.codigo)) return agregarDiferencia(p);   // también el Ajuste por redondeo (029)
   if (p.codigo === COD_DIF_CAJA) {
     if (es('encargado')) return agregarDifCaja(p);
     $('no-encontrado').innerHTML = '<div class="aviso error" style="margin-top:8px">«Diferencia de caja» la carga sólo un encargado, supervisor, dueño o superadmin.</div>';
@@ -1427,7 +1429,7 @@ function agregarLibre() {
   V.carrito.push({ producto_id: null, descripcion: d, cantidad: 1, precio: pr });
   $('libre-desc').value = ''; $('libre-precio').value = ''; pintarCarrito();
 }
-// Diferencia por devolución: una línea más de la venta con el monto que pone el vendedor
+// Diferencia por devolución y Ajuste por redondeo: una línea más de la venta con el monto que pone el vendedor (sólo suma)
 function agregarDiferencia(p) {
   V.carrito.push({ producto_id: p.id, descripcion: p.descripcion, cantidad: 1, precio: +p.precio > 0 ? +p.precio : 0, libre: true });
   $('buscar').value = ''; V.resultados = []; pintarResultados(); pintarCarrito();
@@ -1459,7 +1461,7 @@ function pintarCarrito() {
           onkeydown="if(event.key==='Enter'){event.preventDefault();$('buscar').focus()}">
       </div>` : ''}</td>
       <td class="n"><input type="number" min="1" value="${i.cantidad}" onchange="V.carrito[${k}].cantidad=Math.max(1,+this.value||1);pintarCarrito()"></td>
-      <td class="n"><input id="pr-${k}" class="precio ${faltaValor(i) ? 'falta' : ''}" type="number" ${i.dif_caja ? '' : 'min="0"'} value="${i.libre && !i.precio ? '' : i.precio}" ${i.dif_caja ? 'placeholder="Monto (+ o −)" aria-label="Monto de la diferencia de caja, puede ser negativo"' : i.libre ? 'placeholder="Monto" aria-label="Monto de la diferencia"' : ''} ${puede || i.libre ? '' : 'readonly title="Sólo el encargado o el dueño cambian precios"'} onchange="V.carrito[${k}].precio=${i.dif_caja ? 'Math.round(+this.value||0)' : 'Math.max(0,Math.round(+this.value||0))'};pintarCarrito()"></td>
+      <td class="n"><input id="pr-${k}" class="precio ${faltaValor(i) ? 'falta' : ''}" type="number" ${i.dif_caja ? '' : 'min="0"'} value="${i.libre && !i.precio ? '' : i.precio}" ${i.dif_caja ? 'placeholder="Monto (+ o −)" aria-label="Monto de la diferencia de caja, puede ser negativo"' : i.libre ? 'placeholder="Monto" aria-label="Monto (suma a la venta)"' : ''} ${puede || i.libre ? '' : 'readonly title="Sólo el encargado o el dueño cambian precios"'} onchange="V.carrito[${k}].precio=${i.dif_caja ? 'Math.round(+this.value||0)' : 'Math.max(0,Math.round(+this.value||0))'};pintarCarrito()"></td>
       <td class="n">${fmt(i.cantidad * i.precio)}</td>
       <td><button class="sec chico" onclick="V.carrito.splice(${k},1);pintarCarrito()" aria-label="Quitar">✕</button></td></tr>`).join('');
   if ($('obs-caja')) $('obs-caja').hidden = !hayCredito();
@@ -2228,7 +2230,7 @@ async function vProductos() {
         <td class="p-edit"><a class="boton sec chico" href="#producto/${p.id}">${duenio ? 'Editar' : 'Ver'}</a></td>
         <td class="p-cod">${esc(p.codigo || '')}${p.codigos?.length ? ` <span class="etiqueta" title="Otros códigos: ${esc(p.codigos.join(', '))}">+${p.codigos.length}</span>` : ''}</td>
         <td class="p-desc"><span id="ti-${p.id}">${tilde(p.clase)}</span><a href="#producto/${p.id}">${esc(p.descripcion)}</a></td>
-        <td class="p-cat">${duenio && p.codigo !== COD_DIFERENCIA ? `<select class="cat-fila" data-antes="${esc(p.categoria)}" aria-label="Categoría" onchange="cambiarCategoria(${p.id}, this)">${opcionesCategoria(p.categoria, cats)}</select>` : esc(p.categoria)}</td><td class="p-marca" data-extra="${esc((p.modelo ? ' · ' + p.modelo : ['Funda', 'Flip cover', 'Vidrio templado'].includes(p.categoria) ? ' · ⚠ falta modelo' : '') + (p.codigo ? ' · ' + p.codigo : ''))}">${esc(p.marca)}</td>
+        <td class="p-cat">${duenio && !conPrecioLibre(p.codigo) ? `<select class="cat-fila" data-antes="${esc(p.categoria)}" aria-label="Categoría" onchange="cambiarCategoria(${p.id}, this)">${opcionesCategoria(p.categoria, cats)}</select>` : esc(p.categoria)}</td><td class="p-marca" data-extra="${esc((p.modelo ? ' · ' + p.modelo : ['Funda', 'Flip cover', 'Vidrio templado'].includes(p.categoria) ? ' · ⚠ falta modelo' : '') + (p.codigo ? ' · ' + p.codigo : ''))}">${esc(p.marca)}</td>
         <td class="p-modelo">${esc(p.modelo || '')}${!p.modelo && ['Funda', 'Flip cover', 'Vidrio templado'].includes(p.categoria) ? '<span class="alerta">falta</span>' : ''}</td>
         <td id="cl-${p.id}" class="p-clase">${celdaClase(p.id, p.clase, duenio)}</td>
         <td class="n p-precio">${fmt(p.precio)}</td></tr>`).join('')
@@ -2274,7 +2276,7 @@ async function cambiarPrecios(f) {
   if (!valor) return alert('Poné cuánto querés subir o bajar.');
   if (modo === 'porcentaje' && valor <= -100) return alert('No se puede bajar 100 % o más.');
   const nuevo = p => Math.max(0, Math.round((modo === 'porcentaje' ? +p.precio * (1 + valor / 100) : +p.precio + valor) / paso) * paso);
-  const elegidos = P.filas.filter(p => P.marcados.has(p.id) && p.codigo !== COD_DIFERENCIA);
+  const elegidos = P.filas.filter(p => P.marcados.has(p.id) && !conPrecioLibre(p.codigo));
   if (!elegidos.length) return alert('«Diferencia por devolución» no tiene precio fijo: marcá otros productos.');
   const cuanto = modo === 'porcentaje' ? `${Math.abs(valor)} %` : fmt(Math.abs(valor));
   const ej = elegidos.slice(0, 3).map(p => `• ${p.descripcion}: ${fmt(p.precio)} → ${fmt(nuevo(p))}`).join('\n');
@@ -2287,7 +2289,7 @@ async function cambiarPrecios(f) {
 }
 // Baja masiva (014): no se borran, quedan dados de baja (no aparecen para vender) y se conserva el historial
 async function bajaMarcados() {
-  const ids = [...P.marcados].filter(id => (P.filas.find(p => p.id === id) || {}).codigo !== COD_DIFERENCIA);
+  const ids = [...P.marcados].filter(id => !conPrecioLibre((P.filas.find(p => p.id === id) || {}).codigo));
   if (!ids.length) return alert('Marcá al menos un producto.');
   if (!confirm(`¿Dar de baja ${ids.length} producto${ids.length === 1 ? '' : 's'}?\nDejan de aparecer para vender. Las ventas que ya tienen no se tocan.`)) return;
   try { const r = await rpc('tp_productos_baja', { ...U(), p_ids: ids }); avisar(`${r.n} producto${r.n === 1 ? '' : 's'} dado${r.n === 1 ? '' : 's'} de baja.`); }
