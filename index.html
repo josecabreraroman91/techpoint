@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>Ventas · TechPoint v77</title>
+<title>Ventas · TechPoint v84</title>
 <meta name="theme-color" content="#030305">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Crect x='12' y='40' width='24' height='7' fill='%23ff1a8c'/%3E%3Crect x='42' y='36' width='11' height='11' fill='%232b3fe0'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -810,7 +810,7 @@ body.cargando::after { opacity: 1; animation: cargando-barra 900ms linear infini
    Todo lo que mueve plata o stock lo hace la base (todo o nada).
    Por ahora sin pantalla de login: se elige "con qué usuario entrar" arriba a la derecha.
    ===================================================================== */
-const VERSION = 'v83';
+const VERSION = 'v84';
 // Base propia del dueño (Supabase, organización TechPoint) desde el 24/10/2026. Antes: orbe-clientes de José.
 const NUBE = { url: 'https://ihmnfcmkvckhueowkzet.supabase.co', key: 'sb_publishable_fltCybLk39k92dPRant28A_FT8pGJRL' };
 const MEDIOS = ['Efectivo', 'Débito', 'Crédito', 'Transferencia', 'Mercado Pago'];
@@ -2163,6 +2163,34 @@ async function vHistorial() {
 }
 
 // ---------------------------------------------------------------- inicio
+// v84 (SQL 063): «Proyección al cierre de ayer»: la proyección del mes por local y por vendedor con lo vendido hasta ayer
+// (días completos), para que no la baje el día de hoy a medias. No depende de las fechas elegidas arriba.
+function panelProyAyer(pa, sid) {
+  if (!pa) return `<div class="panel"><h2>Proyección al cierre de ayer</h2><p class="suave">Esta sección necesita el SQL <b>063</b> corrido en Supabase.</p></div>`;
+  const corte = `${ddmm(pa.corte)}/${String(pa.corte).slice(0, 4)}`, mes = MESES[pa.mes].toLowerCase(), desde = ddmm(pa.desde);
+  const completo = pa.pasados >= pa.dias;
+  const L = pa.locales, V = pa.vendedores;
+  const tl = L.reduce((t, l) => ({ v: t.v + +l.vendido, o: t.o + +l.objetivo, p: t.p + +l.proyeccion }), { v: 0, o: 0, p: 0 });
+  return `<div class="panel tabla-scroll" id="proy-ayer"><h2>Proyección al cierre de ayer</h2>
+    <p class="suave">${completo ? `${MESES[pa.mes]} completo (del ${desde} al ${corte}): la proyección es lo vendido.`
+      : `Lo vendido del ${desde} al <b>${corte}</b> (${pa.pasados} de ${pa.dias} días completos) y a cuánto llegaría a fin de ${mes} a ese ritmo. No cuenta lo de hoy, que todavía está a medias, así que no cambia en el día.`}
+      No depende de las fechas elegidas arriba.</p>
+    <h3>Por local</h3>
+    <table><tr><th>Local</th><th class="n">Vendido hasta ayer</th><th class="n">Objetivo</th><th class="n">Proyección a fin de mes</th><th class="n">% del objetivo</th>${completo ? '' : '<th class="n">Falta por día</th>'}</tr>
+      ${L.map(l => `<tr><td>${esc(l.sucursal)}</td><td class="n">${fmt(l.vendido)}</td><td class="n">${+l.objetivo ? fmt(l.objetivo) : '—'}</td>
+        <td class="n"><b>${fmt(l.proyeccion)}</b></td><td class="n ${l.pct_proy == null ? 'suave' : +l.pct_proy >= 100 ? 'ok' : 'alerta'}">${l.pct_proy == null ? 'sin objetivo' : pct(l.pct_proy)}</td>
+        ${completo ? '' : `<td class="n">${+l.objetivo ? fmt(l.por_dia) : '—'}</td>`}</tr>`).join('') || `<tr><td colspan="6" class="suave">Sin locales.</td></tr>`}
+      ${L.length > 1 ? `<tr class="total"><td><b>Total</b></td><td class="n"><b>${fmt(tl.v)}</b></td><td class="n"><b>${tl.o ? fmt(tl.o) : '—'}</b></td><td class="n"><b>${fmt(tl.p)}</b></td>
+        <td class="n"><b>${tl.o ? pct(tl.p / tl.o * 100) : '—'}</b></td>${completo ? '' : '<td></td>'}</tr>` : ''}
+    </table>
+    <h3 style="margin-top:18px">Por vendedor</h3>
+    <p class="suave">Todo lo que vendió cada uno hasta ayer, en cualquier local${sid ? ` (los que vendieron en ${esc(sucNombre(sid))}, con lo que vendieron en todos los locales)` : ''}. "% del total" es su parte en la proyección de todos los de la lista.</p>
+    <table><tr><th>Vendedor</th><th>Locales</th><th class="n">Vendido hasta ayer</th><th class="n">Proyección a fin de mes</th><th class="n">% del total</th></tr>
+      ${V.map(v => `<tr><td>${esc(v.vendedor)}</td><td>${esc(v.locales.join(', '))}</td><td class="n">${fmt(v.vendido)}</td><td class="n"><b>${fmt(v.proyeccion)}</b></td><td class="n">${pct(v.pct)}</td></tr>`).join('')
+        || '<tr><td colspan="5" class="suave">Sin ventas en el mes hasta ayer.</td></tr>'}
+    </table></div>`;
+}
+
 function tablaObjetivos(avance, conBarra) {
   return `<div class="tabla-scroll"><table class="tabla-objetivos">
     <tr class="cab"><th>Sucursal</th><th class="n">Vendido</th><th class="n">Objetivo</th><th>Avance</th><th class="n">Proyección</th><th class="n">${conBarra ? 'Falta por día' : 'Falta'}</th></tr>
@@ -4196,7 +4224,7 @@ function rangoAtajo(k) {
 }
 const ATAJOS = [['hoy', 'Hoy'], ['ayer', 'Ayer'], ['semana', 'Esta semana'], ['7', 'Últimos 7 días'], ['mes', 'Este mes'], ['pasado', 'Mes pasado'], ['30', 'Últimos 30 días'], ['anio', 'Este año']];
 function atajo(k) { [F.desde, F.hasta] = rangoAtajo(k); F.elegido = true; render(); }
-const SECCIONES = [['objetivos', 'Objetivos'], ['dias', 'Día por día'], ['horarios', 'Días y horarios'], ['vendedores', 'Ventas / proyectados vendedor'],
+const SECCIONES = [['objetivos', 'Objetivos'], ['dias', 'Día por día'], ['horarios', 'Días y horarios'], ['vendedores', 'Ventas / proyectados vendedor'], ['ayer', 'Proyección al cierre de ayer'],
   ['categorias', 'Categorías'], ['productos', 'Productos'], ['fundas', 'Fundas y protectores'], ['clases', 'Originales y genéricos'],
   ['medios', 'Medios de pago'], ['caja', 'Caja: ingresos y alivios'], ['cierresz', 'Cierres Z'], ['clientes', 'Clientes'], ['control', 'Cambios, anulaciones y descuentos'],
   ['hydroglass', 'Hydroglass'], ['cargadores', 'Cargadores']];   // v72 (SQL 055)
@@ -4277,10 +4305,11 @@ async function vReportes() {
   const sid = sucFiltro();
   const args = { ...U(), p_desde: F.desde, p_hasta: F.hasta, p_suc: sid };
   if (R.zTop !== F.suc) { R.zTop = F.suc; R.zSuc = null; }        // al cambiar la sucursal de arriba, «Cierres Z» la sigue
-  const [r, x, zs, rub, pv] = await Promise.all([rpc('tp_reportes', args), rpc('tp_reportes_extra', args).catch(e => ({ falta: e.message })),
+  const [r, x, zs, rub, pv, pa] = await Promise.all([rpc('tp_reportes', args), rpc('tp_reportes_extra', args).catch(e => ({ falta: e.message })),
     rpc('tp_reporte_z', { ...args, p_suc: zSucDe(sid) }).catch(() => null),           // null: falta el SQL 050
     rpc('tp_reporte_rubros', args).catch(() => null),                                   // null: falta el SQL 055
-    rpc('tp_proy_vendedores', { ...U(), p_hasta: F.hasta, p_suc: sid }).catch(() => null)]);   // v82: null = falta el SQL 062
+    rpc('tp_proy_vendedores', { ...U(), p_hasta: F.hasta, p_suc: sid }).catch(() => null),   // v82: null = falta el SQL 062
+    rpc('tp_proy_ayer', { ...U(), p_suc: sid }).catch(() => null)]);   // v84: null = falta el SQL 063
   R.zs = zs || [];
   const hayExtra = x && !x.falta;
   const mes = MESES[+F.hasta.slice(5, 7)];
@@ -4519,6 +4548,7 @@ async function vReportes() {
       ${r.proy_vendedores.map(v => `<tr><td>${esc(v.vendedor)}</td>${!sid ? `<td>${esc(v.sucursal)}</td>` : ''}<td class="n">${fmt(v.vendido)}</td><td class="n"><b>${fmt(v.proyeccion)}</b></td><td class="n">${pct(v.pct_local)}</td></tr>`).join('')
         || '<tr><td colspan="5" class="suave">Sin ventas en el mes.</td></tr>'}
     </table>`}</div>`)}
+  ${sec('ayer', panelProyAyer(pa, sid))}
   ${sec('categorias', `<div class="panel tabla-scroll"><h2>Categorías</h2>${hayExtra ? categorias : falta}</div>`)}
   ${sec('productos', `<div class="panel tabla-scroll"><h2>Top 10 productos (unidades)</h2>
     <table><tr><th>#</th><th>Producto</th><th class="n">Unidades</th><th class="n">Importe</th><th>Vendedores (unidades)</th></tr>
